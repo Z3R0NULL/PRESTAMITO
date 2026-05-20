@@ -1,183 +1,90 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import {
+  fetchClients, insertClient, patchClient, removeClient,
+  fetchLoans,   insertLoan,   patchLoan,   removeLoan,
+  fetchPayments, insertPayment, removePayment,
+} from "../lib/db.js";
 
 const StoreContext = createContext(null);
 
-const STORAGE_KEY = "prestamos_app_v1";
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
-
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {
-    clients: [
-      {
-        id: "c1",
-        name: "María González",
-        phone: "0981-234567",
-        email: "maria@email.com",
-        address: "Av. España 123",
-        createdAt: "2025-01-10",
-      },
-      {
-        id: "c2",
-        name: "Carlos Ramírez",
-        phone: "0991-876543",
-        email: "carlos@email.com",
-        address: "Calle Palma 456",
-        createdAt: "2025-02-05",
-      },
-      {
-        id: "c3",
-        name: "Ana Martínez",
-        phone: "0971-112233",
-        email: "ana@email.com",
-        address: "San Lorenzo 789",
-        createdAt: "2025-03-15",
-      },
-    ],
-    loans: [
-      {
-        id: "l1",
-        clientId: "c1",
-        amount: 500000,
-        interestRate: 5,
-        installments: 12,
-        startDate: "2025-02-01",
-        status: "active",
-        notes: "Préstamo personal",
-      },
-      {
-        id: "l2",
-        clientId: "c2",
-        amount: 200000,
-        interestRate: 4,
-        installments: 6,
-        startDate: "2025-03-01",
-        status: "active",
-        notes: "Capital de trabajo",
-      },
-      {
-        id: "l3",
-        clientId: "c3",
-        amount: 800000,
-        interestRate: 6,
-        installments: 24,
-        startDate: "2025-04-01",
-        status: "active",
-        notes: "Inversión negocio",
-      },
-    ],
-    payments: [
-      {
-        id: "p1",
-        loanId: "l1",
-        amount: 47083,
-        date: "2025-03-01",
-        installmentNumber: 1,
-        note: "Cuota 1",
-      },
-      {
-        id: "p2",
-        loanId: "l1",
-        amount: 47083,
-        date: "2025-04-01",
-        installmentNumber: 2,
-        note: "Cuota 2",
-      },
-      {
-        id: "p3",
-        loanId: "l2",
-        amount: 37333,
-        date: "2025-04-01",
-        installmentNumber: 1,
-        note: "Cuota 1",
-      },
-    ],
-  };
-}
-
 export function StoreProvider({ children }) {
-  const [data, setData] = useState(loadData);
+  const [clients, setClients]   = useState([]);
+  const [loans, setLoans]       = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
 
+  // ── initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [data]);
+    async function load() {
+      try {
+        const [c, l, p] = await Promise.all([fetchClients(), fetchLoans(), fetchPayments()]);
+        setClients(c);
+        setLoans(l);
+        setPayments(p);
+      } catch (err) {
+        console.error("Turso load error:", err);
+        setError(err.message ?? "Error connecting to database");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
-  // CLIENTS
-  const addClient = (client) => {
-    setData((d) => ({
-      ...d,
-      clients: [...d.clients, { ...client, id: generateId(), createdAt: new Date().toISOString().slice(0, 10) }],
-    }));
-  };
+  // ── CLIENTS ─────────────────────────────────────────────────────────────────
+  const addClient = useCallback(async (client) => {
+    const created = await insertClient(client);
+    setClients((prev) => [created, ...prev]);
+  }, []);
 
-  const updateClient = (id, updates) => {
-    setData((d) => ({
-      ...d,
-      clients: d.clients.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-    }));
-  };
+  const updateClient = useCallback(async (id, updates) => {
+    await patchClient(id, updates);
+    setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+  }, []);
 
-  const deleteClient = (id) => {
-    setData((d) => ({
-      ...d,
-      clients: d.clients.filter((c) => c.id !== id),
-    }));
-  };
+  const deleteClient = useCallback(async (id) => {
+    await removeClient(id);
+    const loanIds = loans.filter((l) => l.clientId === id).map((l) => l.id);
+    setClients((prev) => prev.filter((c) => c.id !== id));
+    setLoans((prev) => prev.filter((l) => l.clientId !== id));
+    setPayments((prev) => prev.filter((p) => !loanIds.includes(p.loanId)));
+  }, [loans]);
 
-  // LOANS
-  const addLoan = (loan) => {
-    setData((d) => ({
-      ...d,
-      loans: [...d.loans, { ...loan, id: generateId(), status: "active" }],
-    }));
-  };
+  // ── LOANS ───────────────────────────────────────────────────────────────────
+  const addLoan = useCallback(async (loan) => {
+    const created = await insertLoan(loan);
+    setLoans((prev) => [created, ...prev]);
+  }, []);
 
-  const updateLoan = (id, updates) => {
-    setData((d) => ({
-      ...d,
-      loans: d.loans.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-    }));
-  };
+  const updateLoan = useCallback(async (id, updates) => {
+    await patchLoan(id, updates);
+    setLoans((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+  }, []);
 
-  const deleteLoan = (id) => {
-    setData((d) => ({
-      ...d,
-      loans: d.loans.filter((l) => l.id !== id),
-      payments: d.payments.filter((p) => p.loanId !== id),
-    }));
-  };
+  const deleteLoan = useCallback(async (id) => {
+    await removeLoan(id);
+    setLoans((prev) => prev.filter((l) => l.id !== id));
+    setPayments((prev) => prev.filter((p) => p.loanId !== id));
+  }, []);
 
-  // PAYMENTS
-  const addPayment = (payment) => {
-    setData((d) => ({
-      ...d,
-      payments: [...d.payments, { ...payment, id: generateId() }],
-    }));
-  };
+  // ── PAYMENTS ────────────────────────────────────────────────────────────────
+  const addPayment = useCallback(async (payment) => {
+    const created = await insertPayment(payment);
+    setPayments((prev) => [created, ...prev]);
+  }, []);
 
-  const deletePayment = (id) => {
-    setData((d) => ({
-      ...d,
-      payments: d.payments.filter((p) => p.id !== id),
-    }));
-  };
+  const deletePayment = useCallback(async (id) => {
+    await removePayment(id);
+    setPayments((prev) => prev.filter((p) => p.id !== id));
+  }, []);
 
-  // COMPUTED
-  const getLoanPayments = (loanId) => data.payments.filter((p) => p.loanId === loanId);
+  // ── COMPUTED ────────────────────────────────────────────────────────────────
+  const getLoanPayments = (loanId) => payments.filter((p) => p.loanId === loanId);
+  const getClientLoans  = (clientId) => loans.filter((l) => l.clientId === clientId);
+  const getClient       = (id) => clients.find((c) => c.id === id);
+  const getLoan         = (id) => loans.find((l) => l.id === id);
 
-  const getClientLoans = (clientId) => data.loans.filter((l) => l.clientId === clientId);
-
-  const getClient = (id) => data.clients.find((c) => c.id === id);
-
-  const getLoan = (id) => data.loans.find((l) => l.id === id);
-
-  // Monthly installment with interest (flat rate)
   const calcInstallment = (amount, interestRate, installments) => {
     const totalInterest = (amount * (interestRate / 100)) * installments;
     const total = amount + totalInterest;
@@ -189,38 +96,25 @@ export function StoreProvider({ children }) {
     const totalAmount = installmentAmount * loan.installments;
     const paid = getLoanPayments(loan.id).reduce((s, p) => s + p.amount, 0);
     const remaining = Math.max(0, totalAmount - paid);
-    // Cuotas completadas = cuántas cuotas enteras cubre el monto pagado acumulado
     const paidInstallments = Math.min(loan.installments, Math.floor(paid / installmentAmount));
     const remainingInstallments = loan.installments - paidInstallments;
     return { installmentAmount, totalAmount, paid, remaining, paidInstallments, remainingInstallments };
   };
 
   const getDashboardStats = () => {
-    const activeLoans = data.loans.filter((l) => l.status === "active");
+    const activeLoans = loans.filter((l) => l.status === "active");
     const totalLent = activeLoans.reduce((s, l) => s + l.amount, 0);
-    const totalExpected = activeLoans.reduce((l_acc, l) => {
-      const stats = getLoanStats(l);
-      return l_acc + stats.totalAmount;
-    }, 0);
-    const totalCollected = data.payments.reduce((s, p) => s + p.amount, 0);
-    const totalPending = activeLoans.reduce((acc, l) => {
-      const stats = getLoanStats(l);
-      return acc + stats.remaining;
-    }, 0);
-    return {
-      clients: data.clients.length,
-      activeLoans: activeLoans.length,
-      totalLent,
-      totalExpected,
-      totalCollected,
-      totalPending,
-    };
+    const totalExpected = activeLoans.reduce((acc, l) => acc + getLoanStats(l).totalAmount, 0);
+    const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
+    const totalPending = activeLoans.reduce((acc, l) => acc + getLoanStats(l).remaining, 0);
+    return { clients: clients.length, activeLoans: activeLoans.length, totalLent, totalExpected, totalCollected, totalPending };
   };
 
   return (
     <StoreContext.Provider
       value={{
-        ...data,
+        clients, loans, payments,
+        loading, error,
         addClient, updateClient, deleteClient,
         addLoan, updateLoan, deleteLoan,
         addPayment, deletePayment,

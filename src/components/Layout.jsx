@@ -1,7 +1,8 @@
 import { useState } from "react";
 import {
-  LayoutDashboard, Users, HandCoins, CreditCard, Menu, X, TrendingUp,
+  LayoutDashboard, Users, HandCoins, CreditCard, Menu, X, TrendingUp, LogOut,
 } from "lucide-react";
+import { useAuth } from "../store/useAuth.jsx";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -12,6 +13,7 @@ const navItems = [
 
 export default function Layout({ page, setPage, children }) {
   const [open, setOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-[#0a0e1a]">
@@ -22,7 +24,7 @@ export default function Layout({ page, setPage, children }) {
             <TrendingUp size={18} className="text-white" />
           </div>
           <div>
-            <p className="font-bold text-white text-sm leading-tight">PrestaPro</p>
+            <p className="font-bold text-white text-sm leading-tight">Prestamito</p>
             <p className="text-xs text-slate-500">Gestión de Préstamos</p>
           </div>
         </div>
@@ -44,8 +46,19 @@ export default function Layout({ page, setPage, children }) {
           ))}
         </nav>
 
-        <div className="px-4 py-4 border-t border-slate-800">
-          <p className="text-xs text-slate-600 text-center">v1.0 © 2026</p>
+        <div className="px-4 py-4 border-t border-slate-800 space-y-3">
+          <div className="flex items-center gap-2 px-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+              {user?.username?.charAt(0).toUpperCase() ?? "U"}
+            </div>
+            <p className="text-xs text-slate-300 truncate flex-1">{user?.username}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-all"
+          >
+            <LogOut size={14} /> Cerrar sesión
+          </button>
         </div>
       </aside>
 
@@ -55,7 +68,7 @@ export default function Layout({ page, setPage, children }) {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
             <TrendingUp size={15} className="text-white" />
           </div>
-          <span className="font-bold text-white text-sm">PrestaPro</span>
+          <span className="font-bold text-white text-sm">Prestamito</span>
         </div>
         <button onClick={() => setOpen(!open)} className="text-slate-400 p-1">
           {open ? <X size={22} /> : <Menu size={22} />}
