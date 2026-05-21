@@ -78,7 +78,7 @@ export default function Loans() {
                   </div>
                   <div className="text-right flex-shrink-0 hidden sm:block">
                     <p className="text-base font-bold text-white">{fmt(loan.amount)}</p>
-                    <p className="text-xs text-slate-500">{loan.installments} cuotas · {loan.interestRate}% mens.</p>
+                    <p className="text-xs text-slate-500">{loan.installments} cuotas · {loan.interestRate}% {loan.interestType === "total" ? "total" : "mens."}</p>
                   </div>
                   <div className="text-slate-500 flex-shrink-0">
                     {isOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
@@ -94,7 +94,7 @@ export default function Loans() {
                         { label: "Capital", value: fmt(loan.amount), icon: DollarSign },
                         { label: "Total a pagar", value: fmt(stats.totalAmount), icon: DollarSign },
                         { label: "Cuota mensual", value: fmt(stats.installmentAmount), icon: Calendar },
-                        { label: "Interés mensual", value: `${loan.interestRate}%`, icon: Percent },
+                        { label: loan.interestType === "total" ? "Interés total" : "Interés mensual", value: `${loan.interestRate}%`, icon: Percent },
                       ].map(({ label, value, icon: Icon }) => (
                         <div key={label} className="bg-slate-900/60 rounded-xl p-3">
                           <p className="text-xs text-slate-500 mb-1">{label}</p>
@@ -151,7 +151,13 @@ export default function Loans() {
                                 <span className="text-xs text-slate-500">{p.date}</span>
                                 <span className="text-xs font-semibold text-emerald-400">{fmt(p.amount)}</span>
                                 <button
-                                  onClick={() => store.deletePayment(p.id)}
+                                  onClick={async () => {
+                                    try {
+                                      await store.deletePayment(p.id);
+                                    } catch (e) {
+                                      console.error("Error al eliminar pago:", e);
+                                    }
+                                  }}
                                   className="text-slate-600 hover:text-rose-400 transition-colors"
                                 >
                                   <Trash2 size={12} />
@@ -169,7 +175,13 @@ export default function Loans() {
                       <div className="flex gap-2">
                         <Btn
                           variant={loan.status === "active" ? "secondary" : "primary"}
-                          onClick={() => store.updateLoan(loan.id, { status: loan.status === "active" ? "closed" : "active" })}
+                          onClick={async () => {
+                            try {
+                              await store.updateLoan(loan.id, { status: loan.status === "active" ? "closed" : "active" });
+                            } catch (e) {
+                              console.error("Error al actualizar préstamo:", e);
+                            }
+                          }}
                         >
                           {loan.status === "active" ? "Cerrar préstamo" : "Reabrir"}
                         </Btn>
@@ -188,7 +200,14 @@ export default function Loans() {
 
       {showAdd && (
         <LoanForm
-          onSave={(data) => { store.addLoan(data); setShowAdd(false); }}
+          onSave={async (data) => {
+            try {
+              await store.addLoan(data);
+              setShowAdd(false);
+            } catch (e) {
+              console.error("Error al guardar préstamo:", e);
+            }
+          }}
           onClose={() => setShowAdd(false)}
         />
       )}
@@ -201,7 +220,14 @@ export default function Loans() {
           </p>
           <div className="flex gap-3 justify-end">
             <Btn variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Btn>
-            <Btn variant="danger" onClick={() => { store.deleteLoan(confirmDelete.id); setConfirmDelete(null); }}>Eliminar</Btn>
+            <Btn variant="danger" onClick={async () => {
+              try {
+                await store.deleteLoan(confirmDelete.id);
+              } catch (e) {
+                console.error("Error al eliminar préstamo:", e);
+              }
+              setConfirmDelete(null);
+            }}>Eliminar</Btn>
           </div>
         </Modal>
       )}
@@ -215,6 +241,7 @@ function LoanForm({ onSave, onClose }) {
     clientId: store.clients[0]?.id ?? "",
     amount: "",
     interestRate: "5",
+    interestType: "monthly",
     installments: "12",
     startDate: new Date().toISOString().slice(0, 10),
     notes: "",
@@ -223,9 +250,17 @@ function LoanForm({ onSave, onClose }) {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const preview = form.amount && form.interestRate && form.installments
-    ? store.calcInstallment(Number(form.amount), Number(form.interestRate), Number(form.installments))
+  const preview = form.amount && form.installments
+    ? store.calcInstallment(Number(form.amount), Number(form.interestRate || 0), Number(form.installments), form.interestType)
     : null;
+
+  const totalPreview = preview ? preview * Number(form.installments) : null;
+  const interestPreview = totalPreview ? totalPreview - Number(form.amount) : null;
+
+  const interestLabel = form.interestType === "monthly" ? "Interés mensual (%)" : "Interés total (%)";
+  const interestHint  = form.interestType === "monthly"
+    ? "Se aplica por cuota sobre el capital"
+    : "Se aplica una sola vez sobre el capital total";
 
   const submit = () => {
     const errs = {};
@@ -265,17 +300,46 @@ function LoanForm({ onSave, onClose }) {
           />
         </Field>
 
+        {/* Interest type toggle */}
+        <div>
+          <p className="text-xs text-slate-400 mb-2">Tipo de interés</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "monthly", label: "Mensual", desc: "% por cuota" },
+              { value: "total",   label: "Total",   desc: "% sobre capital" },
+            ].map(({ value, label, desc }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, interestType: value }))}
+                className={`py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all text-left ${
+                  form.interestType === value
+                    ? "bg-violet-600/20 border-violet-500/60 text-violet-300"
+                    : "bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                }`}
+              >
+                <span className="block">{label}</span>
+                <span className={`block text-xs font-normal mt-0.5 ${form.interestType === value ? "text-violet-400" : "text-slate-600"}`}>{desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Interés mensual (%)" error={errors.interestRate}>
-            <input
-              type="number"
-              value={form.interestRate}
-              onChange={set("interestRate")}
-              step="0.5"
-              min="0"
-              max="100"
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
-            />
+          <Field label={interestLabel} error={errors.interestRate}>
+            <div className="relative">
+              <input
+                type="number"
+                value={form.interestRate}
+                onChange={set("interestRate")}
+                step="0.5"
+                min="0"
+                max="100"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 pr-8 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">%</span>
+            </div>
+            <p className="text-xs text-slate-600 mt-1">{interestHint}</p>
           </Field>
           <Field label="N° de cuotas" error={errors.installments}>
             <input
@@ -308,7 +372,7 @@ function LoanForm({ onSave, onClose }) {
         </Field>
 
         {/* Preview */}
-        {preview && (
+        {preview !== null && Number(form.amount) > 0 && (
           <div className="bg-blue-950/40 border border-blue-700/30 rounded-xl p-4 grid grid-cols-3 gap-3 text-center">
             <div>
               <p className="text-xs text-blue-400">Cuota mensual</p>
@@ -316,11 +380,11 @@ function LoanForm({ onSave, onClose }) {
             </div>
             <div>
               <p className="text-xs text-blue-400">Total intereses</p>
-              <p className="text-sm font-bold text-blue-200">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(preview * Number(form.installments) - Number(form.amount))}</p>
+              <p className="text-sm font-bold text-blue-200">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(interestPreview)}</p>
             </div>
             <div>
               <p className="text-xs text-blue-400">Total a pagar</p>
-              <p className="text-sm font-bold text-blue-200">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(preview * Number(form.installments))}</p>
+              <p className="text-sm font-bold text-blue-200">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(totalPreview)}</p>
             </div>
           </div>
         )}

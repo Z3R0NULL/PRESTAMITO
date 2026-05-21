@@ -17,8 +17,12 @@ export default function Clients() {
       c.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = (id) => {
-    store.deleteClient(id);
+  const handleDelete = async (id) => {
+    try {
+      await store.deleteClient(id);
+    } catch (e) {
+      console.error("Error al eliminar cliente:", e);
+    }
     setConfirmDelete(null);
   };
 
@@ -141,13 +145,17 @@ export default function Clients() {
       {(showAdd || editing) && (
         <ClientForm
           initial={editing}
-          onSave={(data) => {
-            if (editing) {
-              store.updateClient(editing.id, data);
-              setEditing(null);
-            } else {
-              store.addClient(data);
-              setShowAdd(false);
+          onSave={async (data) => {
+            try {
+              if (editing) {
+                await store.updateClient(editing.id, data);
+                setEditing(null);
+              } else {
+                await store.addClient(data);
+                setShowAdd(false);
+              }
+            } catch (e) {
+              console.error("Error al guardar cliente:", e);
             }
           }}
           onClose={() => { setShowAdd(false); setEditing(null); }}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AuthProvider, useAuth } from "./store/useAuth.jsx";
 import { StoreProvider, useStore } from "./store/useStore.jsx";
+import { SettingsProvider } from "./store/useSettings.jsx";
 import Layout from "./components/Layout";
 import Dashboard from "./components/Dashboard";
 import Clients from "./components/Clients";
@@ -87,8 +88,10 @@ function AuthGate() {
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <AuthProvider>
-      <AuthGate />
-    </AuthProvider>
+    <SettingsProvider>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
+    </SettingsProvider>
   );
 }

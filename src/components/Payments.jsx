@@ -148,7 +148,14 @@ export default function Payments() {
 
       {showAdd && (
         <PaymentForm
-          onSave={(data) => { store.addPayment(data); setShowAdd(false); }}
+          onSave={async (data) => {
+            try {
+              await store.addPayment(data);
+              setShowAdd(false);
+            } catch (e) {
+              console.error("Error al registrar pago:", e);
+            }
+          }}
           onClose={() => setShowAdd(false)}
         />
       )}
@@ -160,7 +167,14 @@ export default function Payments() {
           </p>
           <div className="flex gap-3 justify-end">
             <Btn variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Btn>
-            <Btn variant="danger" onClick={() => { store.deletePayment(confirmDelete.id); setConfirmDelete(null); }}>
+            <Btn variant="danger" onClick={async () => {
+              try {
+                await store.deletePayment(confirmDelete.id);
+              } catch (e) {
+                console.error("Error al eliminar pago:", e);
+              }
+              setConfirmDelete(null);
+            }}>
               Eliminar
             </Btn>
           </div>
@@ -199,12 +213,15 @@ function PaymentForm({ onSave, onClose }) {
   const submit = () => {
     const errs = {};
     if (!form.loanId) errs.loanId = "Selecciona un préstamo";
-    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) errs.amount = "Monto inválido";
+    const parsedAmount = Number(form.amount);
+    if (!form.amount || isNaN(parsedAmount) || parsedAmount <= 0) errs.amount = "Monto inválido";
+    if (loanStats && parsedAmount > loanStats.remaining + 0.01)
+      errs.amount = `El monto excede el saldo pendiente (${new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(loanStats.remaining)})`;
     if (!form.installmentNumber) errs.installmentNumber = "Número de cuota requerido";
     if (Object.keys(errs).length) return setErrors(errs);
     onSave({
       ...form,
-      amount: Number(form.amount),
+      amount: parsedAmount,
       installmentNumber: Number(form.installmentNumber),
     });
   };

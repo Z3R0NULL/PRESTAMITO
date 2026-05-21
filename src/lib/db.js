@@ -56,6 +56,16 @@ export async function initSchema() {
     );
   `);
 
+  // Migrate: add 'role' column if missing
+  try {
+    await db.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
+  } catch (_) { /* already exists */ }
+
+  // Migrate: add 'interestType' column if missing
+  try {
+    await db.execute("ALTER TABLE loans ADD COLUMN interestType TEXT NOT NULL DEFAULT 'monthly'");
+  } catch (_) { /* already exists */ }
+
   // Seed admin if not exists
   const existing = await db.execute({
     sql: "SELECT id FROM users WHERE username = ?",
@@ -93,9 +103,13 @@ export async function insertClient(client) {
   return { ...client, id, createdAt };
 }
 
+const ALLOWED_CLIENT_FIELDS = new Set(["name", "phone", "email", "address"]);
+
 export async function patchClient(id, updates) {
-  const fields = Object.keys(updates).map((k) => `${k} = ?`).join(", ");
-  const values = [...Object.values(updates), id];
+  const safeKeys = Object.keys(updates).filter((k) => ALLOWED_CLIENT_FIELDS.has(k));
+  if (safeKeys.length === 0) return;
+  const fields = safeKeys.map((k) => `${k} = ?`).join(", ");
+  const values = [...safeKeys.map((k) => updates[k]), id];
   await db.execute({ sql: `UPDATE clients SET ${fields} WHERE id = ?`, args: values });
 }
 
@@ -119,15 +133,19 @@ export async function fetchLoans() {
 export async function insertLoan(loan) {
   const id = generateId();
   await db.execute({
-    sql: "INSERT INTO loans (id, clientId, amount, interestRate, installments, startDate, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [id, loan.clientId, loan.amount, loan.interestRate, loan.installments, loan.startDate, "active", loan.notes ?? ""],
+    sql: "INSERT INTO loans (id, clientId, amount, interestRate, interestType, installments, startDate, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [id, loan.clientId, loan.amount, loan.interestRate, loan.interestType ?? "monthly", loan.installments, loan.startDate, "active", loan.notes ?? ""],
   });
-  return { ...loan, id, status: "active" };
+  return { ...loan, id, status: "active", interestType: loan.interestType ?? "monthly" };
 }
 
+const ALLOWED_LOAN_FIELDS = new Set(["clientId", "amount", "interestRate", "interestType", "installments", "startDate", "status", "notes"]);
+
 export async function patchLoan(id, updates) {
-  const fields = Object.keys(updates).map((k) => `${k} = ?`).join(", ");
-  const values = [...Object.values(updates), id];
+  const safeKeys = Object.keys(updates).filter((k) => ALLOWED_LOAN_FIELDS.has(k));
+  if (safeKeys.length === 0) return;
+  const fields = safeKeys.map((k) => `${k} = ?`).join(", ");
+  const values = [...safeKeys.map((k) => updates[k]), id];
   await db.execute({ sql: `UPDATE loans SET ${fields} WHERE id = ?`, args: values });
 }
 

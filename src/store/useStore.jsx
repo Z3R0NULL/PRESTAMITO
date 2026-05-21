@@ -85,14 +85,18 @@ export function StoreProvider({ children }) {
   const getClient       = (id) => clients.find((c) => c.id === id);
   const getLoan         = (id) => loans.find((l) => l.id === id);
 
-  const calcInstallment = (amount, interestRate, installments) => {
-    const totalInterest = (amount * (interestRate / 100)) * installments;
-    const total = amount + totalInterest;
+  // interestType: "monthly" → rate% por cuota sobre capital
+  //               "total"   → rate% sobre el capital total (una sola vez)
+  const calcInstallment = (amount, interestRate, installments, interestType = "monthly") => {
+    const total =
+      interestType === "total"
+        ? amount * (1 + interestRate / 100)
+        : amount + amount * (interestRate / 100) * installments;
     return Math.round(total / installments);
   };
 
   const getLoanStats = (loan) => {
-    const installmentAmount = calcInstallment(loan.amount, loan.interestRate, loan.installments);
+    const installmentAmount = calcInstallment(loan.amount, loan.interestRate, loan.installments, loan.interestType ?? "monthly");
     const totalAmount = installmentAmount * loan.installments;
     const paid = getLoanPayments(loan.id).reduce((s, p) => s + p.amount, 0);
     const remaining = Math.max(0, totalAmount - paid);
