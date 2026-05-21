@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useStore } from "../store/useStore.jsx";
+import { useCurrency } from "../store/useCurrency.js";
 import Modal, { Field, Btn } from "./Modal";
+import CurrencyInput from "./CurrencyInput.jsx";
 import { PlusCircle, Trash2, Eye, ChevronDown, ChevronUp, Percent, Calendar, DollarSign } from "lucide-react";
-
-function fmt(n) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(n);
-}
 
 function Badge({ status }) {
   return (
@@ -20,6 +18,7 @@ function Badge({ status }) {
 
 export default function Loans() {
   const store = useStore();
+  const fmt = useCurrency();
   const [showAdd, setShowAdd] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -237,9 +236,11 @@ export default function Loans() {
 
 function LoanForm({ onSave, onClose }) {
   const store = useStore();
+  const fmt = useCurrency();
   const [form, setForm] = useState({
     clientId: store.clients[0]?.id ?? "",
-    amount: "",
+    amountNumeric: null,   // actual number stored
+    amountDisplay: "",     // what the input shows
     interestRate: "5",
     interestType: "monthly",
     installments: "12",
@@ -250,12 +251,12 @@ function LoanForm({ onSave, onClose }) {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const preview = form.amount && form.installments
-    ? store.calcInstallment(Number(form.amount), Number(form.interestRate || 0), Number(form.installments), form.interestType)
+  const preview = form.amountNumeric && form.installments
+    ? store.calcInstallment(form.amountNumeric, Number(form.interestRate || 0), Number(form.installments), form.interestType)
     : null;
 
   const totalPreview = preview ? preview * Number(form.installments) : null;
-  const interestPreview = totalPreview ? totalPreview - Number(form.amount) : null;
+  const interestPreview = totalPreview ? totalPreview - form.amountNumeric : null;
 
   const interestLabel = form.interestType === "monthly" ? "Interés mensual (%)" : "Interés total (%)";
   const interestHint  = form.interestType === "monthly"
@@ -265,10 +266,18 @@ function LoanForm({ onSave, onClose }) {
   const submit = () => {
     const errs = {};
     if (!form.clientId) errs.clientId = "Selecciona un cliente";
-    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) errs.amount = "Monto inválido";
+    if (!form.amountNumeric || form.amountNumeric <= 0) errs.amount = "Monto inválido";
     if (!form.installments || isNaN(Number(form.installments)) || Number(form.installments) <= 0) errs.installments = "Cuotas inválidas";
     if (Object.keys(errs).length) return setErrors(errs);
-    onSave({ ...form, amount: Number(form.amount), interestRate: Number(form.interestRate), installments: Number(form.installments) });
+    onSave({
+      clientId: form.clientId,
+      amount: form.amountNumeric,
+      interestRate: Number(form.interestRate),
+      interestType: form.interestType,
+      installments: Number(form.installments),
+      startDate: form.startDate,
+      notes: form.notes,
+    });
   };
 
   return (
@@ -290,13 +299,13 @@ function LoanForm({ onSave, onClose }) {
           </select>
         </Field>
 
-        <Field label="Monto del préstamo ($) *" error={errors.amount}>
-          <input
-            type="number"
-            value={form.amount}
-            onChange={set("amount")}
-            placeholder="Ej: 1000000"
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+        <Field label="Monto del préstamo *" error={errors.amount}>
+          <CurrencyInput
+            value={form.amountDisplay}
+            onChange={(numeric, display) =>
+              setForm((f) => ({ ...f, amountNumeric: numeric, amountDisplay: display }))
+            }
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </Field>
 
@@ -372,19 +381,19 @@ function LoanForm({ onSave, onClose }) {
         </Field>
 
         {/* Preview */}
-        {preview !== null && Number(form.amount) > 0 && (
+        {preview !== null && form.amountNumeric > 0 && (
           <div className="bg-blue-950/40 border border-blue-700/30 rounded-xl p-4 grid grid-cols-3 gap-3 text-center">
             <div>
               <p className="text-xs text-blue-400">Cuota mensual</p>
-              <p className="text-sm font-bold text-blue-200">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(preview)}</p>
+              <p className="text-sm font-bold text-blue-200">{fmt(preview)}</p>
             </div>
             <div>
               <p className="text-xs text-blue-400">Total intereses</p>
-              <p className="text-sm font-bold text-blue-200">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(interestPreview)}</p>
+              <p className="text-sm font-bold text-blue-200">{fmt(interestPreview)}</p>
             </div>
             <div>
               <p className="text-xs text-blue-400">Total a pagar</p>
-              <p className="text-sm font-bold text-blue-200">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(totalPreview)}</p>
+              <p className="text-sm font-bold text-blue-200">{fmt(totalPreview)}</p>
             </div>
           </div>
         )}

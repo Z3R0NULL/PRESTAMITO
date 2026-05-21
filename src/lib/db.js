@@ -214,6 +214,28 @@ export async function deleteUser(id) {
   await db.execute({ sql: "DELETE FROM users WHERE id = ?", args: [id] });
 }
 
+export async function updateUser(id, { username, password }) {
+  if (username) {
+    const clash = await db.execute({
+      sql: "SELECT id FROM users WHERE username = ? AND id != ?",
+      args: [username.trim().toLowerCase(), id],
+    });
+    if (clash.rows.length > 0) throw new Error("Ese nombre de usuario ya está en uso");
+    await db.execute({
+      sql: "UPDATE users SET username = ? WHERE id = ?",
+      args: [username.trim().toLowerCase(), id],
+    });
+  }
+  if (password) {
+    if (password.length < 4) throw new Error("La contraseña debe tener al menos 4 caracteres");
+    const passwordHash = await hashPassword(password);
+    await db.execute({
+      sql: "UPDATE users SET passwordHash = ? WHERE id = ?",
+      args: [passwordHash, id],
+    });
+  }
+}
+
 // ── util ──────────────────────────────────────────────────────────────────────
 
 function rowToObj(row) {

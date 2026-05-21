@@ -1,9 +1,6 @@
 import { useStore } from "../store/useStore.jsx";
+import { useCurrency } from "../store/useCurrency.js";
 import { Users, HandCoins, Wallet, TrendingUp, Clock, CheckCircle } from "lucide-react";
-
-function fmt(n) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(n);
-}
 
 function StatCard({ icon: Icon, label, value, sub, color }) {
   return (
@@ -21,6 +18,7 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 }
 
 export default function Dashboard({ setPage }) {
+  const fmt = useCurrency();
   const store = useStore();
   const stats = store.getDashboardStats();
 

@@ -1,23 +1,29 @@
 import { useState } from "react";
 import {
-  LayoutDashboard, Users, HandCoins, CreditCard, Menu, X, TrendingUp, LogOut, Settings,
+  LayoutDashboard, Users, HandCoins, CreditCard, Menu, X, TrendingUp, LogOut, Settings, UserCog,
 } from "lucide-react";
 import { useAuth } from "../store/useAuth.jsx";
 import { useSettings } from "../store/useSettings.jsx";
 import SettingsModal from "./SettingsModal.jsx";
 
-const navItems = [
+const baseNavItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "clients", label: "Clientes", icon: Users },
   { id: "loans", label: "Préstamos", icon: HandCoins },
   { id: "payments", label: "Pagos", icon: CreditCard },
 ];
 
+const adminNavItems = [
+  { id: "users", label: "Usuarios", icon: UserCog, adminOnly: true },
+];
+
 export default function Layout({ page, setPage, children }) {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const { settings } = useSettings();
+
+  const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
 
   return (
     <div className="flex min-h-screen bg-[#0a0e1a]">
@@ -43,19 +49,25 @@ export default function Layout({ page, setPage, children }) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setPage(id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                page === id
-                  ? "bg-gradient-to-r from-blue-600/30 to-violet-600/20 text-blue-300 border border-blue-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-              }`}
-            >
-              <Icon size={17} />
-              {label}
-            </button>
+          {navItems.map(({ id, label, icon: Icon, adminOnly }) => (
+            <div key={id}>
+              {adminOnly && (
+                <div className="my-2 border-t border-slate-800/80" />
+              )}
+              <button
+                onClick={() => setPage(id)}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  page === id
+                    ? adminOnly
+                      ? "bg-gradient-to-r from-amber-600/20 to-orange-600/10 text-amber-300 border border-amber-500/30"
+                      : "bg-gradient-to-r from-blue-600/30 to-violet-600/20 text-blue-300 border border-blue-500/30"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                }`}
+              >
+                <Icon size={17} />
+                {label}
+              </button>
+            </div>
           ))}
         </nav>
 
@@ -112,19 +124,25 @@ export default function Layout({ page, setPage, children }) {
       {open && (
         <div className="md:hidden fixed inset-0 z-20 pt-14">
           <div className="bg-[#0d1224] h-full border-r border-slate-800 w-64 px-3 py-4 space-y-1">
-            {navItems.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => { setPage(id); setOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  page === id
-                    ? "bg-gradient-to-r from-blue-600/30 to-violet-600/20 text-blue-300 border border-blue-500/30"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-                }`}
-              >
-                <Icon size={17} />
-                {label}
-              </button>
+            {navItems.map(({ id, label, icon: Icon, adminOnly }) => (
+              <div key={id}>
+                {adminOnly && (
+                  <div className="my-2 border-t border-slate-800/80" />
+                )}
+                <button
+                  onClick={() => { setPage(id); setOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    page === id
+                      ? adminOnly
+                        ? "bg-gradient-to-r from-amber-600/20 to-orange-600/10 text-amber-300 border border-amber-500/30"
+                        : "bg-gradient-to-r from-blue-600/30 to-violet-600/20 text-blue-300 border border-blue-500/30"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  }`}
+                >
+                  <Icon size={17} />
+                  {label}
+                </button>
+              </div>
             ))}
           </div>
           <div className="flex-1 bg-black/60 absolute inset-0 z-[-1]" onClick={() => setOpen(false)} />

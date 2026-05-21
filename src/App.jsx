@@ -7,12 +7,14 @@ import Dashboard from "./components/Dashboard";
 import Clients from "./components/Clients";
 import Loans from "./components/Loans";
 import Payments from "./components/Payments";
+import Users from "./components/Users";
 import LoginPage from "./components/LoginPage.jsx";
 
 // ── Inner app (requires auth + store) ────────────────────────────────────────
 function AppContent() {
   const [page, setPage] = useState("dashboard");
   const { loading, error } = useStore();
+  const { isAdmin } = useAuth();
 
   if (loading) {
     return (
@@ -41,6 +43,7 @@ function AppContent() {
     clients: <Clients />,
     loans: <Loans />,
     payments: <Payments />,
+    ...(isAdmin && { users: <Users /> }),
   };
 
   return (

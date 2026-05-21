@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useStore } from "../store/useStore.jsx";
+import { useCurrency } from "../store/useCurrency.js";
 import Modal, { Field, Btn } from "./Modal";
+import CurrencyInput from "./CurrencyInput.jsx";
 import { PlusCircle, Trash2, CheckCircle, Search } from "lucide-react";
-
-function fmt(n) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(n);
-}
 
 export default function Payments() {
   const store = useStore();
+  const fmt = useCurrency();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -186,11 +185,13 @@ export default function Payments() {
 
 function PaymentForm({ onSave, onClose }) {
   const store = useStore();
+  const fmt = useCurrency();
   const activeLoans = store.loans.filter((l) => l.status === "active");
 
   const [form, setForm] = useState({
     loanId: activeLoans[0]?.id ?? "",
-    amount: "",
+    amountNumeric: null,
+    amountDisplay: "",
     date: new Date().toISOString().slice(0, 10),
     installmentNumber: "",
     note: "",
@@ -203,26 +204,33 @@ function PaymentForm({ onSave, onClose }) {
   const loanStats = selectedLoan ? store.getLoanStats(selectedLoan) : null;
 
   const suggestAmount = () => {
-    if (loanStats) setForm((f) => ({ ...f, amount: String(loanStats.installmentAmount) }));
+    if (loanStats)
+      setForm((f) => ({
+        ...f,
+        amountNumeric: loanStats.installmentAmount,
+        amountDisplay: String(loanStats.installmentAmount),
+      }));
   };
 
   const suggestInstallment = () => {
-    if (loanStats) setForm((f) => ({ ...f, installmentNumber: String(loanStats.paidInstallments + 1) }));
+    if (loanStats)
+      setForm((f) => ({ ...f, installmentNumber: String(loanStats.paidInstallments + 1) }));
   };
 
   const submit = () => {
     const errs = {};
     if (!form.loanId) errs.loanId = "Selecciona un préstamo";
-    const parsedAmount = Number(form.amount);
-    if (!form.amount || isNaN(parsedAmount) || parsedAmount <= 0) errs.amount = "Monto inválido";
-    if (loanStats && parsedAmount > loanStats.remaining + 0.01)
-      errs.amount = `El monto excede el saldo pendiente (${new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(loanStats.remaining)})`;
+    if (!form.amountNumeric || form.amountNumeric <= 0) errs.amount = "Monto inválido";
+    if (loanStats && form.amountNumeric > loanStats.remaining + 0.01)
+      errs.amount = `El monto excede el saldo pendiente (${fmt(loanStats.remaining)})`;
     if (!form.installmentNumber) errs.installmentNumber = "Número de cuota requerido";
     if (Object.keys(errs).length) return setErrors(errs);
     onSave({
-      ...form,
-      amount: parsedAmount,
+      loanId: form.loanId,
+      amount: form.amountNumeric,
+      date: form.date,
       installmentNumber: Number(form.installmentNumber),
+      note: form.note,
     });
   };
 
@@ -244,7 +252,7 @@ function PaymentForm({ onSave, onClose }) {
                 const c = store.getClient(l.clientId);
                 return (
                   <option key={l.id} value={l.id}>
-                    {c?.name ?? "?"} – {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(l.amount)}
+                    {c?.name ?? "?"} – {fmt(l.amount)}
                   </option>
                 );
               })
@@ -256,7 +264,7 @@ function PaymentForm({ onSave, onClose }) {
           <div className="bg-slate-900/60 rounded-xl p-3 grid grid-cols-3 gap-2 text-center text-xs">
             <div>
               <p className="text-slate-500">Cuota sugerida</p>
-              <p className="text-white font-semibold">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(loanStats.installmentAmount)}</p>
+              <p className="text-white font-semibold">{fmt(loanStats.installmentAmount)}</p>
             </div>
             <div>
               <p className="text-slate-500">Pagadas</p>
@@ -264,7 +272,7 @@ function PaymentForm({ onSave, onClose }) {
             </div>
             <div>
               <p className="text-slate-500">Pendiente</p>
-              <p className="text-amber-300 font-semibold">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(loanStats.remaining)}</p>
+              <p className="text-amber-300 font-semibold">{fmt(loanStats.remaining)}</p>
             </div>
           </div>
         )}
@@ -298,17 +306,17 @@ function PaymentForm({ onSave, onClose }) {
           </Field>
         </div>
 
-        <Field label="Monto pagado ($) *" error={errors.amount}>
-          <input
-            type="number"
-            value={form.amount}
-            onChange={set("amount")}
-            placeholder="Ej: 500000"
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+        <Field label="Monto pagado *" error={errors.amount}>
+          <CurrencyInput
+            value={form.amountDisplay}
+            onChange={(numeric, display) =>
+              setForm((f) => ({ ...f, amountNumeric: numeric, amountDisplay: display }))
+            }
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
           {loanStats && (
             <button onClick={suggestAmount} className="text-xs text-blue-400 hover:text-blue-300 mt-1">
-              Usar cuota sugerida: {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(loanStats.installmentAmount)}
+              Usar cuota sugerida: {fmt(loanStats.installmentAmount)}
             </button>
           )}
         </Field>
