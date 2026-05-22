@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TrendingUp, Eye, EyeOff, User, Lock, LogIn } from "lucide-react";
+import { HandCoins, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../store/useAuth.jsx";
 
 export default function LoginPage() {
@@ -28,64 +28,57 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center p-4">
-      {/* Decorative blobs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl" />
-      </div>
+    /* bg-slate-950 = #020617 */
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
 
-      <div className="relative w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8 gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-xl shadow-blue-900/40">
-            <TrendingUp size={26} className="text-white" />
+        {/* Logo header */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-600/20">
+            <HandCoins size={26} className="text-white" />
           </div>
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-white tracking-tight">Prestamito</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Gestión de Préstamos</p>
-          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Prestamito</h1>
+          <p className="text-sm text-slate-400 mt-1">Ingresá con tu cuenta</p>
         </div>
 
         {/* Card */}
-        <div className="bg-[#0d1224] border border-slate-800 rounded-2xl p-7 shadow-2xl">
-          <h2 className="text-lg font-semibold text-white mb-1">Iniciar sesión</h2>
-          <p className="text-slate-400 text-sm mb-6">Ingresá tus credenciales para continuar</p>
-
+        <div className="bg-slate-900 rounded-xl shadow-xl border border-slate-700/60 p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username */}
+
+            {/* Usuario */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Usuario</label>
-              <div className="relative">
-                <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="text"
-                  autoComplete="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="tu_usuario"
-                  className="w-full bg-[#0a0e1a] border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-colors"
-                />
-              </div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
+                Usuario
+              </label>
+              <input
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Usuario"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-700 bg-slate-800 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 transition-colors"
+              />
             </div>
 
-            {/* Password */}
+            {/* Contraseña */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Contraseña</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
+                Contraseña
+              </label>
               <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type={showPwd ? "text" : "password"}
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#0a0e1a] border border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-colors"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-slate-700 bg-slate-800 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 transition-colors"
                 />
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => setShowPwd((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
                 >
                   {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -94,25 +87,34 @@ export default function LoginPage() {
 
             {/* Error */}
             {error && (
-              <div className="bg-rose-950/40 border border-rose-800/50 rounded-xl px-4 py-2.5">
-                <p className="text-rose-400 text-xs">{error}</p>
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-red-900/20 border border-red-800/50 text-red-400 text-sm">
+                {error}
               </div>
             )}
 
-            {/* Submit */}
+            {/* Botón */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-xl transition-all shadow-lg shadow-blue-900/30"
+              className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-medium rounded-lg transition-all mt-1 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
-                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : (
-                <><LogIn size={15} /> Ingresar</>
-              )}
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : null}
+              {loading ? "Verificando..." : "Iniciar sesión"}
             </button>
+
           </form>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-slate-600 mt-5">
+          Prestamito · Acceso restringido
+        </p>
+
       </div>
     </div>
   );
