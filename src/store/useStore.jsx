@@ -7,7 +7,7 @@ import {
 
 const StoreContext = createContext(null);
 
-export function StoreProvider({ children }) {
+export function StoreProvider({ userId, children }) {
   const [clients, setClients]   = useState([]);
   const [loans, setLoans]       = useState([]);
   const [payments, setPayments] = useState([]);
@@ -18,7 +18,7 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     async function load() {
       try {
-        const [c, l, p] = await Promise.all([fetchClients(), fetchLoans(), fetchPayments()]);
+        const [c, l, p] = await Promise.all([fetchClients(userId), fetchLoans(userId), fetchPayments(userId)]);
         setClients(c);
         setLoans(l);
         setPayments(p);
@@ -30,13 +30,13 @@ export function StoreProvider({ children }) {
       }
     }
     load();
-  }, []);
+  }, [userId]);
 
   // ── CLIENTS ─────────────────────────────────────────────────────────────────
   const addClient = useCallback(async (client) => {
-    const created = await insertClient(client);
+    const created = await insertClient(client, userId);
     setClients((prev) => [created, ...prev]);
-  }, []);
+  }, [userId]);
 
   const updateClient = useCallback(async (id, updates) => {
     await patchClient(id, updates);

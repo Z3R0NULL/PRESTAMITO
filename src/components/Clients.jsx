@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useStore } from "../store/useStore.jsx";
 import Modal, { Field, Input, Textarea, Btn } from "./Modal";
-import { UserPlus, Pencil, Trash2, Phone, Mail, MapPin, Search } from "lucide-react";
+import { UserPlus, Pencil, Trash2, Phone, Mail, MapPin, Search, CreditCard } from "lucide-react";
 
 export default function Clients() {
   const store = useStore();
@@ -13,6 +13,7 @@ export default function Clients() {
   const filtered = store.clients.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.dni?.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.toLowerCase().includes(search.toLowerCase()) ||
       c.email?.toLowerCase().includes(search.toLowerCase())
   );
@@ -44,99 +45,80 @@ export default function Clients() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre, teléfono o email..."
+          placeholder="Buscar por nombre, DNI, teléfono o email..."
           className="w-full bg-[#0d1224] border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
         />
       </div>
 
-      {/* Table */}
+      {/* List */}
       <div className="bg-[#0d1224] border border-slate-800 rounded-2xl overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-16 text-center">
             <p className="text-slate-500 text-sm">No se encontraron clientes</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-800 text-left">
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Cliente</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Contacto</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Dirección</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Préstamos</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((client, i) => {
-                  const loans = store.getClientLoans(client.id);
-                  return (
-                    <tr
-                      key={client.id}
-                      className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors ${i === filtered.length - 1 ? "border-b-0" : ""}`}
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600/40 to-violet-600/40 border border-blue-500/20 flex items-center justify-center text-sm font-bold text-blue-300 flex-shrink-0">
-                            {client.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-white">{client.name}</p>
-                            <p className="text-xs text-slate-500">Desde {client.createdAt}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 hidden sm:table-cell">
-                        <div className="space-y-1">
-                          {client.phone && (
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                              <Phone size={11} /> {client.phone}
-                            </div>
-                          )}
-                          {client.email && (
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                              <Mail size={11} /> {client.email}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 hidden md:table-cell">
-                        {client.address && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                            <MapPin size={11} /> {client.address}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          loans.length > 0
-                            ? "bg-blue-900/40 text-blue-300 border border-blue-700/40"
-                            : "bg-slate-800 text-slate-500"
-                        }`}>
-                          {loans.length} préstamo{loans.length !== 1 ? "s" : ""}
+          <div className="divide-y divide-slate-800/60">
+            {filtered.map((client) => {
+              const loans = store.getClientLoans(client.id);
+              return (
+                <div key={client.id} className="flex items-start gap-3 px-4 py-4 hover:bg-slate-800/20 transition-colors">
+                  {/* Avatar */}
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600/40 to-violet-600/40 border border-blue-500/20 flex items-center justify-center text-sm font-bold text-blue-300 flex-shrink-0 mt-0.5">
+                    {client.name.charAt(0)}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-medium text-white leading-tight">{client.name}</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                      {client.dni && (
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <CreditCard size={10} /> {client.dni}
                         </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setEditing(client)}
-                            className="p-2 text-slate-400 hover:text-blue-300 hover:bg-slate-800 rounded-lg transition-colors"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(client)}
-                            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-900/20 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      )}
+                      {client.phone && (
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <Phone size={10} /> {client.phone}
+                        </span>
+                      )}
+                      {client.email && (
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <Mail size={10} /> {client.email}
+                        </span>
+                      )}
+                      {client.address && (
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <MapPin size={10} /> {client.address}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      loans.length > 0
+                        ? "bg-blue-900/40 text-blue-300 border border-blue-700/40"
+                        : "bg-slate-800 text-slate-500"
+                    }`}>
+                      {loans.length} préstamo{loans.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => setEditing(client)}
+                      className="p-2 text-slate-500 hover:text-blue-300 hover:bg-slate-800 rounded-lg transition-colors"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(client)}
+                      className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -182,6 +164,7 @@ export default function Clients() {
 function ClientForm({ initial, onSave, onClose }) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
+    dni: initial?.dni ?? "",
     phone: initial?.phone ?? "",
     email: initial?.email ?? "",
     address: initial?.address ?? "",
@@ -205,6 +188,14 @@ function ClientForm({ initial, onSave, onClose }) {
             value={form.name}
             onChange={set("name")}
             placeholder="Ej: Juan Pérez"
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+          />
+        </Field>
+        <Field label="DNI / ID">
+          <input
+            value={form.dni}
+            onChange={set("dni")}
+            placeholder="Ej: 12345678"
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </Field>

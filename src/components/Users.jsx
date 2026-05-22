@@ -267,18 +267,16 @@ export default function Users() {
                     })}
                   </div>
 
-                  {/* Actions — edit + delete for non-admin non-self users */}
+                  {/* Actions — edit + delete for all users except self */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {!isAdminUser && (
-                      <button
-                        onClick={() => openEdit(u)}
-                        className="p-2 text-slate-600 hover:text-blue-400 hover:bg-blue-950/30 rounded-lg transition-colors"
-                        title="Editar usuario"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                    )}
-                    {!isCurrentUser && !isAdminUser && (
+                    <button
+                      onClick={() => openEdit(u)}
+                      className="p-2 text-slate-600 hover:text-blue-400 hover:bg-blue-950/30 rounded-lg transition-colors"
+                      title="Editar usuario"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    {!isCurrentUser && (
                       <button
                         onClick={() => setConfirmDelete(u)}
                         className="p-2 text-slate-600 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
@@ -286,9 +284,6 @@ export default function Users() {
                       >
                         <Trash2 size={14} />
                       </button>
-                    )}
-                    {(isCurrentUser || isAdminUser) && !(!isAdminUser) && (
-                      <div className="w-[72px]" />
                     )}
                   </div>
                 </div>

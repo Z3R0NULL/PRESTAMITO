@@ -66,9 +66,19 @@ export async function initSchema() {
     await db.execute("ALTER TABLE loans ADD COLUMN interestType TEXT NOT NULL DEFAULT 'monthly'");
   } catch (_) { /* already exists */ }
 
+  // Migrate: add 'userId' column to clients if missing
+  try {
+    await db.execute("ALTER TABLE clients ADD COLUMN userId TEXT NOT NULL DEFAULT ''");
+  } catch (_) { /* already exists */ }
+
+  // Migrate: add 'dni' column to clients if missing
+  try {
+    await db.execute("ALTER TABLE clients ADD COLUMN dni TEXT NOT NULL DEFAULT ''");
+  } catch (_) { /* already exists */ }
+
   // Seed admin if not exists
   const existing = await db.execute({
-    sql: "SELECT id FROM users WHERE username = ?",
+    sql: "SELECT id FROM users WHERE username = ? COLLATE NOCASE",
     args: ["z3r0null"],
   });
   if (existing.rows.length === 0) {
@@ -88,22 +98,25 @@ function generateId() {
 
 // ── clients ──────────────────────────────────────────────────────────────────
 
-export async function fetchClients() {
-  const res = await db.execute("SELECT * FROM clients ORDER BY createdAt DESC");
+export async function fetchClients(userId) {
+  const res = await db.execute({
+    sql: "SELECT * FROM clients WHERE userId = ? ORDER BY createdAt DESC",
+    args: [userId],
+  });
   return res.rows.map(rowToObj);
 }
 
-export async function insertClient(client) {
+export async function insertClient(client, userId) {
   const id = generateId();
   const createdAt = new Date().toISOString().slice(0, 10);
   await db.execute({
-    sql: "INSERT INTO clients (id, name, phone, email, address, createdAt) VALUES (?, ?, ?, ?, ?, ?)",
-    args: [id, client.name, client.phone ?? "", client.email ?? "", client.address ?? "", createdAt],
+    sql: "INSERT INTO clients (id, name, dni, phone, email, address, createdAt, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [id, client.name, client.dni ?? "", client.phone ?? "", client.email ?? "", client.address ?? "", createdAt, userId],
   });
-  return { ...client, id, createdAt };
+  return { ...client, id, createdAt, userId };
 }
 
-const ALLOWED_CLIENT_FIELDS = new Set(["name", "phone", "email", "address"]);
+const ALLOWED_CLIENT_FIELDS = new Set(["name", "dni", "phone", "email", "address"]);
 
 export async function patchClient(id, updates) {
   const safeKeys = Object.keys(updates).filter((k) => ALLOWED_CLIENT_FIELDS.has(k));
@@ -125,8 +138,11 @@ export async function removeClient(id) {
 
 // ── loans ─────────────────────────────────────────────────────────────────────
 
-export async function fetchLoans() {
-  const res = await db.execute("SELECT * FROM loans ORDER BY startDate DESC");
+export async function fetchLoans(userId) {
+  const res = await db.execute({
+    sql: "SELECT loans.* FROM loans INNER JOIN clients ON loans.clientId = clients.id WHERE clients.userId = ? ORDER BY loans.startDate DESC",
+    args: [userId],
+  });
   return res.rows.map(rowToObj);
 }
 
@@ -156,8 +172,11 @@ export async function removeLoan(id) {
 
 // ── payments ──────────────────────────────────────────────────────────────────
 
-export async function fetchPayments() {
-  const res = await db.execute("SELECT * FROM payments ORDER BY date DESC");
+export async function fetchPayments(userId) {
+  const res = await db.execute({
+    sql: "SELECT payments.* FROM payments INNER JOIN loans ON payments.loanId = loans.id INNER JOIN clients ON loans.clientId = clients.id WHERE clients.userId = ? ORDER BY payments.date DESC",
+    args: [userId],
+  });
   return res.rows.map(rowToObj);
 }
 
@@ -178,8 +197,8 @@ export async function removePayment(id) {
 
 export async function loginUser(username, password) {
   const res = await db.execute({
-    sql: "SELECT * FROM users WHERE username = ?",
-    args: [username.trim().toLowerCase()],
+    sql: "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+    args: [username.trim()],
   });
   if (res.rows.length === 0) throw new Error("Usuario o contraseña incorrectos");
   const user = rowToObj(res.rows[0]);

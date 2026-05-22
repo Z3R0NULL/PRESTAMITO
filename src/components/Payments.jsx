@@ -65,70 +65,41 @@ export default function Payments() {
         />
       </div>
 
-      {/* Table */}
+      {/* List */}
       <div className="bg-[#0d1224] border border-slate-800 rounded-2xl overflow-hidden">
         {enriched.length === 0 ? (
           <div className="py-16 text-center">
             <p className="text-slate-500 text-sm">No se encontraron pagos</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-800 text-left">
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Cliente</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Préstamo</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Cuota</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Monto</th>
-                  <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {enriched.map((payment, i) => (
-                  <tr
-                    key={payment.id}
-                    className={`border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors ${i === enriched.length - 1 ? "border-b-0" : ""}`}
+          <div className="divide-y divide-slate-800/60">
+            {enriched.map((payment) => (
+              <div key={payment.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-800/20 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-emerald-900/30 border border-emerald-700/30 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle size={13} className="text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white leading-tight truncate">{payment.client?.name ?? "—"}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="inline-flex px-1.5 py-0.5 rounded-full bg-blue-900/30 text-blue-300 border border-blue-700/30 text-xs font-medium">
+                      Cuota #{payment.installmentNumber}
+                    </span>
+                    <span className="text-xs text-slate-500">{payment.date}</span>
+                    {payment.loan && <span className="text-xs text-slate-600">· {fmt(payment.loan.amount)}</span>}
+                    {payment.note && <span className="text-xs text-slate-500 italic">· {payment.note}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <p className="text-sm font-semibold text-emerald-400">{fmt(payment.amount)}</p>
+                  <button
+                    onClick={() => setConfirmDelete(payment)}
+                    className="p-1.5 text-slate-600 hover:text-rose-400 hover:bg-rose-900/20 rounded-lg transition-colors"
                   >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-emerald-900/30 border border-emerald-700/30 flex items-center justify-center flex-shrink-0">
-                          <CheckCircle size={13} className="text-emerald-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">{payment.client?.name ?? "—"}</p>
-                          {payment.note && <p className="text-xs text-slate-500">{payment.note}</p>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 hidden sm:table-cell">
-                      <p className="text-xs text-slate-400">
-                        {payment.loan ? fmt(payment.loan.amount) : "—"}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="inline-flex px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-300 border border-blue-700/30 text-xs font-medium">
-                        #{payment.installmentNumber}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <p className="text-sm text-slate-300">{payment.date}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <p className="text-sm font-semibold text-emerald-400">{fmt(payment.amount)}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <button
-                        onClick={() => setConfirmDelete(payment)}
-                        className="p-2 text-slate-600 hover:text-rose-400 hover:bg-rose-900/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

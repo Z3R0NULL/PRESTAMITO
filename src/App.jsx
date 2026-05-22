@@ -82,7 +82,7 @@ function AuthGate() {
   if (!user) return <LoginPage />;
 
   return (
-    <StoreProvider>
+    <StoreProvider userId={user.id}>
       <AppContent />
     </StoreProvider>
   );
