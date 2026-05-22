@@ -59,7 +59,7 @@ export function Textarea({ className = "", ...props }) {
 export function Btn({ variant = "primary", className = "", children, ...props }) {
   const base = "px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 flex items-center gap-2 justify-center";
   const variants = {
-    primary: "bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:from-blue-500 hover:to-violet-500 shadow-lg shadow-blue-900/30",
+    primary: "bg-indigo-600 text-white hover:bg-indigo-700",
     secondary: "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700",
     danger: "bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-700/40",
     ghost: "text-slate-400 hover:text-white hover:bg-slate-800",

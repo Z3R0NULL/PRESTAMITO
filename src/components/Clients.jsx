@@ -33,10 +33,9 @@ function getInitials(name) {
     .join("");
 }
 
-export default function Clients() {
+export default function Clients({ setPage }) {
   const store = useStore();
   const [search, setSearch]           = useState("");
-  const [showAdd, setShowAdd]         = useState(false);
   const [editing, setEditing]         = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [view, setView]               = useState("grid");
@@ -92,7 +91,7 @@ export default function Clients() {
           </p>
         </div>
         <button
-          onClick={() => setShowAdd(true)}
+          onClick={() => setPage("new-client")}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <UserPlus size={15} /> Nuevo cliente
@@ -173,7 +172,7 @@ export default function Clients() {
           <UserPlus size={40} className="mb-3 opacity-30" />
           <p className="font-medium">{search ? "No hay clientes que coincidan" : "Sin clientes aún"}</p>
           {!search && (
-            <button onClick={() => setShowAdd(true)} className="mt-3 text-sm text-indigo-400 hover:underline">
+            <button onClick={() => setPage("new-client")} className="mt-3 text-sm text-indigo-400 hover:underline">
               Agregar primer cliente
             </button>
           )}
@@ -307,17 +306,17 @@ export default function Clients() {
         </div>
       )}
 
-      {/* Add/Edit modal */}
-      {(showAdd || editing) && (
+      {/* Edit modal */}
+      {editing && (
         <ClientForm
           initial={editing}
           onSave={async (data) => {
             try {
-              if (editing) { await store.updateClient(editing.id, data); setEditing(null); }
-              else         { await store.addClient(data); setShowAdd(false); }
+              await store.updateClient(editing.id, data);
+              setEditing(null);
             } catch (e) { console.error(e); }
           }}
-          onClose={() => { setShowAdd(false); setEditing(null); }}
+          onClose={() => setEditing(null)}
         />
       )}
 

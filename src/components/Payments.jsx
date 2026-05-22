@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { useStore } from "../store/useStore.jsx";
 import { useCurrency } from "../store/useCurrency.js";
-import Modal, { Field, Btn } from "./Modal";
-import CurrencyInput from "./CurrencyInput.jsx";
+import Modal, { Btn } from "./Modal";
 import { PlusCircle, Trash2, CheckCircle, Search } from "lucide-react";
 
-export default function Payments() {
+export default function Payments({ setPage }) {
   const store = useStore();
   const fmt = useCurrency();
-  const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -40,7 +38,7 @@ export default function Payments() {
           <h1 className="text-2xl font-bold text-white">Pagos</h1>
           <p className="text-slate-400 text-sm mt-1">{store.payments.length} pago{store.payments.length !== 1 ? "s" : ""} registrado{store.payments.length !== 1 ? "s" : ""}</p>
         </div>
-        <Btn onClick={() => setShowAdd(true)}>
+        <Btn onClick={() => setPage("new-payment")}>
           <PlusCircle size={15} /> Registrar pago
         </Btn>
       </div>
@@ -114,20 +112,6 @@ export default function Payments() {
             </p>
           </div>
         </div>
-      )}
-
-      {showAdd && (
-        <PaymentForm
-          onSave={async (data) => {
-            try {
-              await store.addPayment(data);
-              setShowAdd(false);
-            } catch (e) {
-              console.error("Error al registrar pago:", e);
-            }
-          }}
-          onClose={() => setShowAdd(false)}
-        />
       )}
 
       {confirmDelete && (

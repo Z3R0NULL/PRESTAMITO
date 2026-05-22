@@ -9,6 +9,9 @@ import Loans from "./components/Loans";
 import Payments from "./components/Payments";
 import Users from "./components/Users";
 import LoginPage from "./components/LoginPage.jsx";
+import NewClientPage from "./components/NewClientPage.jsx";
+import NewLoanPage from "./components/NewLoanPage.jsx";
+import NewPaymentPage from "./components/NewPaymentPage.jsx";
 
 // ── Inner app (requires auth + store) ────────────────────────────────────────
 function AppContent() {
@@ -40,9 +43,12 @@ function AppContent() {
 
   const pages = {
     dashboard: <Dashboard setPage={setPage} />,
-    clients: <Clients />,
-    loans: <Loans />,
-    payments: <Payments />,
+    clients: <Clients setPage={setPage} />,
+    loans: <Loans setPage={setPage} />,
+    payments: <Payments setPage={setPage} />,
+    "new-client": <NewClientPage setPage={setPage} />,
+    "new-loan": <NewLoanPage setPage={setPage} />,
+    "new-payment": <NewPaymentPage setPage={setPage} />,
     ...(isAdmin && { users: <Users /> }),
   };
 

@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useStore } from "../store/useStore.jsx";
 import { useCurrency } from "../store/useCurrency.js";
-import Modal, { Field, Btn } from "./Modal";
-import CurrencyInput from "./CurrencyInput.jsx";
-import { PlusCircle, Trash2, Eye, ChevronDown, ChevronUp, Percent, Calendar, DollarSign } from "lucide-react";
+import Modal, { Btn } from "./Modal";
+import { PlusCircle, Trash2, ChevronDown, ChevronUp, Percent, Calendar, DollarSign } from "lucide-react";
 
 function Badge({ status }) {
   return (
@@ -16,10 +15,9 @@ function Badge({ status }) {
   );
 }
 
-export default function Loans() {
+export default function Loans({ setPage }) {
   const store = useStore();
   const fmt = useCurrency();
-  const [showAdd, setShowAdd] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -32,7 +30,7 @@ export default function Loans() {
           <h1 className="text-2xl font-bold text-white">Préstamos</h1>
           <p className="text-slate-400 text-sm mt-1">{store.loans.length} préstamo{store.loans.length !== 1 ? "s" : ""} registrado{store.loans.length !== 1 ? "s" : ""}</p>
         </div>
-        <Btn onClick={() => setShowAdd(true)}>
+        <Btn onClick={() => setPage("new-loan")}>
           <PlusCircle size={15} /> Nuevo préstamo
         </Btn>
       </div>
@@ -195,20 +193,6 @@ export default function Loans() {
             );
           })}
         </div>
-      )}
-
-      {showAdd && (
-        <LoanForm
-          onSave={async (data) => {
-            try {
-              await store.addLoan(data);
-              setShowAdd(false);
-            } catch (e) {
-              console.error("Error al guardar préstamo:", e);
-            }
-          }}
-          onClose={() => setShowAdd(false)}
-        />
       )}
 
       {confirmDelete && (

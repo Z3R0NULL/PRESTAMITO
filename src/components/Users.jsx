@@ -173,7 +173,7 @@ export default function Users() {
           </button>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-900/30"
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors"
           >
             <UserPlus size={15} />
             Nuevo usuario
@@ -226,8 +226,8 @@ export default function Users() {
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                       isAdminUser
-                        ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-900/30"
-                        : "bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-md shadow-blue-900/30"
+                        ? "bg-amber-600 text-white"
+                        : "bg-indigo-600 text-white"
                     }`}
                   >
                     {u.username.charAt(0).toUpperCase()}
@@ -332,7 +332,7 @@ export default function Users() {
               <button
                 type="submit"
                 disabled={createLoading}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 rounded-xl transition-all shadow-lg shadow-blue-900/30"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors"
               >
                 {createLoading ? "Creando…" : "Crear usuario"}
               </button>
@@ -382,7 +382,7 @@ export default function Users() {
               <button
                 type="submit"
                 disabled={editLoading}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 rounded-xl transition-all shadow-lg shadow-blue-900/30"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors"
               >
                 {editLoading ? "Guardando…" : "Guardar cambios"}
               </button>
@@ -409,7 +409,7 @@ export default function Users() {
               </button>
               <button
                 onClick={() => handleDelete(confirmDelete)}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 rounded-xl transition-all"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors"
               >
                 Eliminar
               </button>
