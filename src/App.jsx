@@ -12,12 +12,19 @@ import LoginPage from "./components/LoginPage.jsx";
 import NewClientPage from "./components/NewClientPage.jsx";
 import NewLoanPage from "./components/NewLoanPage.jsx";
 import NewPaymentPage from "./components/NewPaymentPage.jsx";
+import ClientLoanHistory from "./components/ClientLoanHistory.jsx";
 
 // ── Inner app (requires auth + store) ────────────────────────────────────────
 function AppContent() {
   const [page, setPage] = useState("dashboard");
+  const [historyClientId, setHistoryClientId] = useState(null);
   const { loading, error } = useStore();
   const { isAdmin } = useAuth();
+
+  const goToHistory = (clientId) => {
+    setHistoryClientId(clientId);
+    setPage("client-history");
+  };
 
   if (loading) {
     return (
@@ -43,12 +50,13 @@ function AppContent() {
 
   const pages = {
     dashboard: <Dashboard setPage={setPage} />,
-    clients: <Clients setPage={setPage} />,
+    clients: <Clients setPage={setPage} onViewHistory={goToHistory} />,
     loans: <Loans setPage={setPage} />,
     payments: <Payments setPage={setPage} />,
     "new-client": <NewClientPage setPage={setPage} />,
     "new-loan": <NewLoanPage setPage={setPage} />,
     "new-payment": <NewPaymentPage setPage={setPage} />,
+    "client-history": <ClientLoanHistory clientId={historyClientId} setPage={setPage} />,
     ...(isAdmin && { users: <Users /> }),
   };
 

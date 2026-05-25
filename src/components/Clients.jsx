@@ -3,7 +3,7 @@ import { useStore } from "../store/useStore.jsx";
 import Modal, { Field, Btn } from "./Modal";
 import {
   UserPlus, Pencil, Trash2, Phone, Mail, MapPin, Search,
-  CreditCard, X, LayoutGrid, LayoutList, ArrowUpDown, ChevronDown, Check,
+  CreditCard, X, LayoutGrid, LayoutList, ArrowUpDown, ChevronDown, Check, History,
 } from "lucide-react";
 
 const SORT_OPTIONS = [
@@ -33,7 +33,7 @@ function getInitials(name) {
     .join("");
 }
 
-export default function Clients({ setPage }) {
+export default function Clients({ setPage, onViewHistory }) {
   const store = useStore();
   const [search, setSearch]           = useState("");
   const [editing, setEditing]         = useState(null);
@@ -220,6 +220,7 @@ export default function Clients({ setPage }) {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => onViewHistory(client.id)} title="Ver historial de préstamos" className="p-1.5 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-900/20 transition-colors"><History size={14} /></button>
                           <button onClick={() => setEditing(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20 transition-colors"><Pencil size={14} /></button>
                           <button onClick={() => setConfirmDelete(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-900/20 transition-colors"><Trash2 size={14} /></button>
                         </div>
@@ -263,6 +264,7 @@ export default function Clients({ setPage }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => onViewHistory(client.id)} title="Ver historial de préstamos" className="p-1.5 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-900/20 transition-colors"><History size={14} /></button>
                     <button onClick={() => setEditing(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20 transition-colors"><Pencil size={14} /></button>
                     <button onClick={() => setConfirmDelete(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-900/20 transition-colors"><Trash2 size={14} /></button>
                   </div>
@@ -290,8 +292,8 @@ export default function Clients({ setPage }) {
                   )}
                 </div>
 
-                {/* Footer: loan badge */}
-                <div className="pt-2 border-t border-slate-800 mt-auto">
+                {/* Footer: loan badge + history button */}
+                <div className="pt-2 border-t border-slate-800 mt-auto flex items-center justify-between gap-2">
                   <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${
                     loans.length > 0
                       ? "bg-indigo-900/40 text-indigo-300 border border-indigo-700/40"
@@ -299,6 +301,12 @@ export default function Clients({ setPage }) {
                   }`}>
                     {loans.length} préstamo{loans.length !== 1 ? "s" : ""}
                   </span>
+                  <button
+                    onClick={() => onViewHistory(client.id)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-sky-400 hover:bg-sky-900/20 border border-sky-800/40 hover:border-sky-600/60 transition-colors"
+                  >
+                    <History size={12} /> Ver historial
+                  </button>
                 </div>
               </div>
             );

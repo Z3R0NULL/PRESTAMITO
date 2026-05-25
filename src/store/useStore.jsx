@@ -7,6 +7,15 @@ import {
 
 const StoreContext = createContext(null);
 
+// Pure function so it can be used both inside and outside the Provider
+function calcInstallmentFn(amount, interestRate, installments, interestType = "monthly") {
+  const total =
+    interestType === "total"
+      ? amount * (1 + interestRate / 100)
+      : amount + amount * (interestRate / 100) * installments;
+  return Math.round(total / installments);
+}
+
 export function StoreProvider({ userId, children }) {
   const [clients, setClients]   = useState([]);
   const [loans, setLoans]       = useState([]);
@@ -71,7 +80,24 @@ export function StoreProvider({ userId, children }) {
   // ── PAYMENTS ────────────────────────────────────────────────────────────────
   const addPayment = useCallback(async (payment) => {
     const created = await insertPayment(payment);
-    setPayments((prev) => [created, ...prev]);
+    setPayments((prev) => {
+      const updated = [created, ...prev];
+      // Auto-close loan if fully paid
+      setLoans((prevLoans) =>
+        prevLoans.map((loan) => {
+          if (loan.id !== payment.loanId || loan.status === "closed") return loan;
+          const installmentAmount = calcInstallmentFn(loan.amount, loan.interestRate, loan.installments, loan.interestType ?? "monthly");
+          const totalAmount = installmentAmount * loan.installments;
+          const totalPaid = updated.filter((p) => p.loanId === loan.id).reduce((s, p) => s + p.amount, 0);
+          if (totalPaid >= totalAmount) {
+            patchLoan(loan.id, { status: "closed" }).catch(console.error);
+            return { ...loan, status: "closed" };
+          }
+          return loan;
+        })
+      );
+      return updated;
+    });
   }, []);
 
   const deletePayment = useCallback(async (id) => {
@@ -87,13 +113,7 @@ export function StoreProvider({ userId, children }) {
 
   // interestType: "monthly" → rate% por cuota sobre capital
   //               "total"   → rate% sobre el capital total (una sola vez)
-  const calcInstallment = (amount, interestRate, installments, interestType = "monthly") => {
-    const total =
-      interestType === "total"
-        ? amount * (1 + interestRate / 100)
-        : amount + amount * (interestRate / 100) * installments;
-    return Math.round(total / installments);
-  };
+  const calcInstallment = calcInstallmentFn;
 
   const getLoanStats = (loan) => {
     const installmentAmount = calcInstallment(loan.amount, loan.interestRate, loan.installments, loan.interestType ?? "monthly");
