@@ -1,7 +1,16 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/NewClientPage.jsx — Alta y edición de clientes
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Si recibe la prop `initial`, funciona como editor (actualiza el cliente).
+ *  Si no, crea uno nuevo. Tras guardar invoca onSaved o navega a "clients".
+ *  Valida los campos en el cliente antes de tocar la base.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState } from "react";
 import { useStore } from "../store/useStore.jsx";
 import { Field, Btn } from "./Modal";
-import { UserPlus, ArrowLeft } from "lucide-react";
+import { UserPlus, ArrowLeft, Search } from "lucide-react";
 
 const inputCls =
   "w-full bg-[#0d1224] border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-colors";
@@ -91,12 +100,28 @@ export default function NewClientPage({ setPage, initial, onSaved }) {
             />
           </Field>
           <Field label="DNI / ID">
-            <input
-              value={form.dni}
-              onChange={set("dni")}
-              placeholder="Ej: 12345678"
-              className={inputCls}
-            />
+            <div className="relative">
+              <input
+                value={form.dni}
+                onChange={set("dni")}
+                placeholder="Ej: 12345678"
+                className={inputCls + " pr-10"}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const n = form.name.trim();
+                  if (!n) return;
+                  const url = `https://www.dateas.com/es/consulta_cuit_cuil?${new URLSearchParams({ name: n })}`;
+                  window.open(url, "_blank", "noopener,noreferrer");
+                }}
+                disabled={!form.name.trim()}
+                title={form.name.trim() ? "Buscar DNI en Dateas" : "Ingresá el nombre primero"}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Search size={16} />
+              </button>
+            </div>
           </Field>
         </div>
 

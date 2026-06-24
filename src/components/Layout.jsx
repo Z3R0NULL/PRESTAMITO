@@ -1,6 +1,17 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/Layout.jsx — Esqueleto de la app (sidebar + topbar + contenido)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Envuelve todas las páginas con:
+ *    • Sidebar de navegación (Dashboard, Clientes, Préstamos, Usuarios).
+ *    • Topbar con nombre de la empresa, configuración y logout.
+ *    • Área principal donde se renderiza la página activa (children).
+ *  La entrada "Usuarios" solo aparece para administradores.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState } from "react";
 import {
-  LayoutDashboard, Users, HandCoins, CreditCard, Menu, X, LogOut, Settings, UserCog, TrendingUp, ShieldCheck,
+  LayoutDashboard, Users, HandCoins, Menu, X, LogOut, Settings, UserCog, TrendingUp,
 } from "lucide-react";
 import { useAuth } from "../store/useAuth.jsx";
 import { useSettings } from "../store/useSettings.jsx";
@@ -10,7 +21,6 @@ const baseNavItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "clients",   label: "Clientes",  icon: Users },
   { id: "loans",     label: "Préstamos", icon: HandCoins },
-  { id: "payments",  label: "Pagos",     icon: CreditCard },
 ];
 
 const adminNavItems = [
@@ -148,8 +158,8 @@ export default function Layout({ page, setPage, children }) {
       )}
 
       {/* Main content */}
-      <main className="flex-1 md:ml-64 pt-14 md:pt-0">
-        <div className="p-4 md:p-8 max-w-6xl mx-auto">
+      <main className="flex-1 md:ml-64 pt-14 md:pt-0 min-w-0 overflow-x-hidden">
+        <div className="p-3 sm:p-4 md:p-8 max-w-6xl mx-auto">
           {children}
         </div>
       </main>

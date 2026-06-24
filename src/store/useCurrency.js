@@ -1,3 +1,16 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  store/useCurrency.js — Hook de formateo de moneda
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Atajo para no tener que importar formatCurrency + useSettings en cada
+ *  componente. Devuelve una función `fmt(n)` que ya conoce la moneda
+ *  configurada (ARS / USD).
+ *
+ *  Uso típico:
+ *      const fmt = useCurrency();
+ *      <span>{fmt(loan.amount)}</span>   // → "$ 50.000"
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useSettings } from "./useSettings.jsx";
 import { formatCurrency } from "../lib/currency.js";
 

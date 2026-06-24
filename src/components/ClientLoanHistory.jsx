@@ -1,3 +1,12 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/ClientLoanHistory.jsx — Historial de préstamos de un cliente
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Pantalla a la que se llega desde la lista de clientes ("Ver historial").
+ *  Muestra todos los préstamos del cliente con su progreso y totales,
+ *  incluyendo los cerrados.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useMemo } from "react";
 import { useStore } from "../store/useStore.jsx";
 import { useCurrency } from "../store/useCurrency.js";
@@ -6,6 +15,7 @@ import {
   ArrowLeft, PlusCircle, Trash2, ChevronDown, ChevronUp,
   Percent, Calendar, DollarSign, Phone, Mail, MapPin, CreditCard,
 } from "lucide-react";
+import { progressFillClass } from "./loanHelpers.jsx";
 
 const AVATAR_COLORS = [
   "bg-indigo-900/50 text-indigo-300",
@@ -190,7 +200,7 @@ export default function ClientLoanHistory({ clientId, setPage }) {
                     <div className="flex items-center gap-3 mt-1.5">
                       <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden max-w-xs">
                         <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all"
+                          className={`h-full ${progressFillClass(pct)} rounded-full transition-all`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>

@@ -1,9 +1,30 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/NewLoanPage.jsx — Alta de préstamos
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Formulario para crear un préstamo nuevo. Permite elegir cliente, monto,
+ *  tasa, tipo de interés ("monthly" o "total"), número de cuotas, fecha de
+ *  inicio, método de pago y adjuntar comprobante. Muestra en vivo el valor
+ *  de la cuota calculada con calcInstallment del store.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState } from "react";
 import { useStore } from "../store/useStore.jsx";
 import { useCurrency } from "../store/useCurrency.js";
 import { Field, Btn } from "./Modal";
 import CurrencyInput from "./CurrencyInput.jsx";
-import { HandCoins, ArrowLeft, Percent, Calendar, DollarSign } from "lucide-react";
+import { HandCoins, ArrowLeft, Percent, Calendar, DollarSign, Paperclip, X, Wallet, ArrowLeftRight } from "lucide-react";
+
+const MAX_ATTACH_BYTES = 5 * 1024 * 1024; // 5 MB
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
 
 const inputCls =
   "w-full bg-[#0d1224] border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors";
@@ -16,14 +37,43 @@ export default function NewLoanPage({ setPage }) {
     clientId: store.clients[0]?.id ?? "",
     amountNumeric: null,
     amountDisplay: "",
-    interestRate: "5",
-    interestType: "monthly",
+    interestRate: "50",
+    interestType: "total",
     installments: "12",
     startDate: new Date().toISOString().slice(0, 10),
     notes: "",
+    paymentMethod: "cash", // 'cash' | 'transfer'
+    attachment: null,        // data URL
+    attachmentName: null,
+    attachmentType: null,
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+
+  const onPickFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_ATTACH_BYTES) {
+      setErrors((er) => ({ ...er, attachment: "Archivo demasiado grande (máx. 5 MB)" }));
+      e.target.value = "";
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      setForm((f) => ({
+        ...f,
+        attachment: dataUrl,
+        attachmentName: file.name,
+        attachmentType: file.type || "application/octet-stream",
+      }));
+      setErrors((er) => ({ ...er, attachment: undefined }));
+    } catch {
+      setErrors((er) => ({ ...er, attachment: "No se pudo leer el archivo" }));
+    }
+  };
+
+  const clearFile = () =>
+    setForm((f) => ({ ...f, attachment: null, attachmentName: null, attachmentType: null }));
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -65,6 +115,10 @@ export default function NewLoanPage({ setPage }) {
         installments: Number(form.installments),
         startDate: form.startDate,
         notes: form.notes,
+        paymentMethod: form.paymentMethod,
+        attachment: form.attachment,
+        attachmentName: form.attachmentName,
+        attachmentType: form.attachmentType,
       });
       setPage("loans");
     } catch (e) {
@@ -196,6 +250,40 @@ export default function NewLoanPage({ setPage }) {
           />
         </Field>
 
+        {/* Payment method toggle */}
+        <div>
+          <p className="text-xs text-slate-400 mb-2">¿Cómo se entregó el dinero?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "cash",     label: "Efectivo",      desc: "Entrega en mano",     Icon: Wallet },
+              { value: "transfer", label: "Transferencia", desc: "Pago bancario / app", Icon: ArrowLeftRight },
+            ].map(({ value, label, desc, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, paymentMethod: value }))}
+                className={`py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all text-left flex items-start gap-2.5 ${
+                  form.paymentMethod === value
+                    ? "bg-emerald-600/15 border-emerald-500/60 text-emerald-300"
+                    : "bg-slate-900/60 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                }`}
+              >
+                <Icon size={16} className="mt-0.5 flex-shrink-0" />
+                <span className="flex-1">
+                  <span className="block">{label}</span>
+                  <span
+                    className={`block text-xs font-normal mt-0.5 ${
+                      form.paymentMethod === value ? "text-emerald-400/80" : "text-slate-600"
+                    }`}
+                  >
+                    {desc}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <Field label="Notas (opcional)">
           <textarea
             value={form.notes}
@@ -204,6 +292,34 @@ export default function NewLoanPage({ setPage }) {
             placeholder="Motivo del préstamo..."
             className="w-full bg-[#0d1224] border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
           />
+        </Field>
+
+        <Field label="Adjuntar archivo (opcional)" error={errors.attachment}>
+          {!form.attachment ? (
+            <label className="flex items-center gap-2 cursor-pointer bg-[#0d1224] border border-dashed border-slate-700 hover:border-blue-500 rounded-xl px-4 py-3 text-sm text-slate-400 hover:text-slate-200 transition-colors">
+              <Paperclip size={16} />
+              <span>Seleccionar PDF, imagen u otro archivo (máx. 5 MB)</span>
+              <input
+                type="file"
+                onChange={onPickFile}
+                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+                className="hidden"
+              />
+            </label>
+          ) : (
+            <div className="flex items-center gap-3 bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2.5">
+              <Paperclip size={16} className="text-blue-400 flex-shrink-0" />
+              <span className="text-sm text-slate-200 truncate flex-1">{form.attachmentName}</span>
+              <button
+                type="button"
+                onClick={clearFile}
+                className="text-slate-500 hover:text-rose-400 transition-colors"
+                title="Quitar archivo"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
         </Field>
 
         {/* Preview */}

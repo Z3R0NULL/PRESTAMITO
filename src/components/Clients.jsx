@@ -1,3 +1,12 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/Clients.jsx — Listado y gestión de clientes
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Permite buscar, ordenar, ver historial, editar y eliminar clientes.
+ *  El alta/edición real ocurre en NewClientPage. Aquí solo se listan y se
+ *  disparan acciones via callbacks (onEditClient, onViewHistory).
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useMemo } from "react";
 import { useStore } from "../store/useStore.jsx";
 import Modal, { Field, Btn } from "./Modal";
@@ -33,10 +42,9 @@ function getInitials(name) {
     .join("");
 }
 
-export default function Clients({ setPage, onViewHistory }) {
+export default function Clients({ setPage, onViewHistory, onEditClient }) {
   const store = useStore();
   const [search, setSearch]           = useState("");
-  const [editing, setEditing]         = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [view, setView]               = useState("grid");
   const [sort, setSort]               = useState("newest");
@@ -221,7 +229,7 @@ export default function Clients({ setPage, onViewHistory }) {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => onViewHistory(client.id)} title="Ver historial de préstamos" className="p-1.5 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-900/20 transition-colors"><History size={14} /></button>
-                          <button onClick={() => setEditing(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20 transition-colors"><Pencil size={14} /></button>
+                          <button onClick={() => onEditClient(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20 transition-colors"><Pencil size={14} /></button>
                           <button onClick={() => setConfirmDelete(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-900/20 transition-colors"><Trash2 size={14} /></button>
                         </div>
                       </td>
@@ -265,7 +273,7 @@ export default function Clients({ setPage, onViewHistory }) {
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button onClick={() => onViewHistory(client.id)} title="Ver historial de préstamos" className="p-1.5 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-900/20 transition-colors"><History size={14} /></button>
-                    <button onClick={() => setEditing(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20 transition-colors"><Pencil size={14} /></button>
+                    <button onClick={() => onEditClient(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20 transition-colors"><Pencil size={14} /></button>
                     <button onClick={() => setConfirmDelete(client)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-900/20 transition-colors"><Trash2 size={14} /></button>
                   </div>
                 </div>
@@ -312,20 +320,6 @@ export default function Clients({ setPage, onViewHistory }) {
             );
           })}
         </div>
-      )}
-
-      {/* Edit modal */}
-      {editing && (
-        <ClientForm
-          initial={editing}
-          onSave={async (data) => {
-            try {
-              await store.updateClient(editing.id, data);
-              setEditing(null);
-            } catch (e) { console.error(e); }
-          }}
-          onClose={() => setEditing(null)}
-        />
       )}
 
       {/* Confirm delete */}

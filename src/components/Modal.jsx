@@ -1,5 +1,19 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/Modal.jsx — Modal genérico + primitivos de formulario
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Exporta:
+ *    • <Modal>     → contenedor con backdrop, título y cierre.
+ *    • <Field>     → label + slot para input + mensaje de error.
+ *    • <Input>     → input estilizado con la paleta oscura.
+ *    • <Select>    → idem select.
+ *    • <Textarea>  → idem textarea.
+ *    • <Btn>       → botón con variantes: primary, secondary, danger, ghost.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { X } from "lucide-react";
 
+/** Modal centrado con backdrop clickeable que invoca onClose. */
 export default function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

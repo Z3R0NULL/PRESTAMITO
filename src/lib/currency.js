@@ -1,10 +1,17 @@
 /**
- * Currency utilities for Prestamito.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  lib/currency.js — Utilidades de moneda
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Tres funciones principales:
+ *    • formatCurrency(n, cur)        → "$ 1.500,50" listo para mostrar.
+ *    • formatInputDisplay(n, cur)    → "1.500,50" sin símbolo, para inputs.
+ *    • parseInputValue(str, cur)     → convierte texto local a Number.
+ *    • processCurrencyInput(str,cur) → procesa cada tecleo en un input.
  *
- * Argentina uses:  1.000,50  (dot = thousands, comma = decimal)
- * USD uses:        1,000.50  (comma = thousands, dot = decimal)
- *
- * Inputs accept the local format and convert to a plain Number internally.
+ *  Locales soportados:
+ *    Argentina (ARS):  1.000,50   (punto = miles, coma = decimal)
+ *    USD:              1,000.50   (coma = miles, punto = decimal)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 /**

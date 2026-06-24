@@ -1,8 +1,22 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  store/useAuth.jsx — Contexto de autenticación
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Maneja:
+ *    • Inicialización del esquema de la base (initSchema en el primer mount).
+ *    • Sesión actual (`user`) persistida en sessionStorage para sobrevivir a
+ *      recargas de la pestaña pero NO al cierre del navegador.
+ *    • Helpers `login` / `logout` y bandera `isAdmin`.
+ *
+ *  Uso:  const { user, login, logout, isAdmin } = useAuth();
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useEffect, createContext, useContext } from "react";
 import { initSchema, loginUser } from "../lib/db.js";
 
 const AuthContext = createContext(null);
 
+// Clave bajo la que se guarda la sesión en sessionStorage.
 const SESSION_KEY = "prestamito_user";
 
 export function AuthProvider({ children }) {

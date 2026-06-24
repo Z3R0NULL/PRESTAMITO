@@ -1,19 +1,51 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  store/useStore.jsx — Estado global de datos (clientes, préstamos, pagos)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Es la fuente de la verdad para la UI. Al montar carga todo desde Turso
+ *  con `Promise.all` y luego mantiene una copia local en memoria que se
+ *  sincroniza tras cada mutación (optimistic update + persistencia).
+ *
+ *  Reglas importantes:
+ *    • Los pagos con `isLateFee=true` (recargos por mora) NO suman al saldo
+ *      del préstamo: solo se contabilizan aparte. Esto evita que un recargo
+ *      cierre o adelante una cuota.
+ *    • Un préstamo se cierra automáticamente cuando la suma de pagos NO-mora
+ *      alcanza el total a pagar (capital + intereses).
+ *
+ *  Helpers expuestos:
+ *    • CRUD: addClient / updateClient / deleteClient (idem loans, payments).
+ *    • Lecturas derivadas: getLoanStats, getDashboardStats, getNextPayment...
+ *    • Cálculo de cuota: `calcInstallment(amount, rate, n, interestType)`.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import {
   fetchClients, insertClient, patchClient, removeClient,
   fetchLoans,   insertLoan,   patchLoan,   removeLoan,
-  fetchPayments, insertPayment, removePayment,
+  fetchPayments, insertPayment, removePayment, patchPayment,
 } from "../lib/db.js";
 
 const StoreContext = createContext(null);
 
-// Pure function so it can be used both inside and outside the Provider
+/**
+ * Calcula el monto de una cuota.
+ *   • interestType = "monthly" → la tasa se aplica cada cuota sobre el capital
+ *                                (interés simple por período).
+ *   • interestType = "total"   → la tasa se aplica una sola vez sobre el total.
+ * Definida fuera del componente para poder reutilizarse sin re-crearse en
+ * cada render.
+ */
 function calcInstallmentFn(amount, interestRate, installments, interestType = "monthly") {
+  const n = Number(installments) || 0;
+  const amt = Number(amount) || 0;
+  const rate = Number(interestRate) || 0;
+  if (n <= 0) return 0;
   const total =
     interestType === "total"
-      ? amount * (1 + interestRate / 100)
-      : amount + amount * (interestRate / 100) * installments;
-  return Math.round(total / installments);
+      ? amt * (1 + rate / 100)
+      : amt + amt * (rate / 100) * n;
+  return Math.round(total / n);
 }
 
 export function StoreProvider({ userId, children }) {
@@ -40,6 +72,25 @@ export function StoreProvider({ userId, children }) {
     }
     load();
   }, [userId]);
+
+  // ── auto-close fully paid loans (reconciliation) ────────────────────────────
+  useEffect(() => {
+    if (loading) return;
+    const toClose = [];
+    loans.forEach((loan) => {
+      if (loan.status !== "active") return;
+      const installmentAmount = calcInstallmentFn(loan.amount, loan.interestRate, loan.installments, loan.interestType ?? "monthly");
+      const totalAmount = installmentAmount * loan.installments;
+      // Only count installment payments (NOT late fees) toward closing the loan
+      const totalPaid = payments
+        .filter((p) => p.loanId === loan.id && !p.isLateFee)
+        .reduce((s, p) => s + p.amount, 0);
+      if (totalAmount > 0 && totalPaid >= totalAmount) toClose.push(loan.id);
+    });
+    if (toClose.length === 0) return;
+    setLoans((prev) => prev.map((l) => (toClose.includes(l.id) ? { ...l, status: "closed" } : l)));
+    toClose.forEach((id) => patchLoan(id, { status: "closed" }).catch(console.error));
+  }, [loading, loans, payments]);
 
   // ── CLIENTS ─────────────────────────────────────────────────────────────────
   const addClient = useCallback(async (client) => {
@@ -82,13 +133,15 @@ export function StoreProvider({ userId, children }) {
     const created = await insertPayment(payment);
     setPayments((prev) => {
       const updated = [created, ...prev];
-      // Auto-close loan if fully paid
+      // Auto-close loan if fully paid (only installment payments count)
       setLoans((prevLoans) =>
         prevLoans.map((loan) => {
           if (loan.id !== payment.loanId || loan.status === "closed") return loan;
           const installmentAmount = calcInstallmentFn(loan.amount, loan.interestRate, loan.installments, loan.interestType ?? "monthly");
           const totalAmount = installmentAmount * loan.installments;
-          const totalPaid = updated.filter((p) => p.loanId === loan.id).reduce((s, p) => s + p.amount, 0);
+          const totalPaid = updated
+            .filter((p) => p.loanId === loan.id && !p.isLateFee)
+            .reduce((s, p) => s + p.amount, 0);
           if (totalPaid >= totalAmount) {
             patchLoan(loan.id, { status: "closed" }).catch(console.error);
             return { ...loan, status: "closed" };
@@ -105,6 +158,20 @@ export function StoreProvider({ userId, children }) {
     setPayments((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
+  const updatePayment = useCallback(async (id, updates) => {
+    await patchPayment(id, updates);
+    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+    // Re-evaluate loan status (may need to reopen if amount reduced)
+    setLoans((prevLoans) => {
+      const target = prevLoans.find((l) => {
+        const pay = payments.find((pp) => pp.id === id);
+        return pay && l.id === pay.loanId;
+      });
+      if (!target) return prevLoans;
+      return prevLoans;
+    });
+  }, [payments]);
+
   // ── COMPUTED ────────────────────────────────────────────────────────────────
   const getLoanPayments = (loanId) => payments.filter((p) => p.loanId === loanId);
   const getClientLoans  = (clientId) => loans.filter((l) => l.clientId === clientId);
@@ -118,11 +185,15 @@ export function StoreProvider({ userId, children }) {
   const getLoanStats = (loan) => {
     const installmentAmount = calcInstallment(loan.amount, loan.interestRate, loan.installments, loan.interestType ?? "monthly");
     const totalAmount = installmentAmount * loan.installments;
-    const paid = getLoanPayments(loan.id).reduce((s, p) => s + p.amount, 0);
+    const all = getLoanPayments(loan.id);
+    const paid = all.filter((p) => !p.isLateFee).reduce((s, p) => s + p.amount, 0);
+    const totalLateFees = all.filter((p) => p.isLateFee).reduce((s, p) => s + p.amount, 0);
     const remaining = Math.max(0, totalAmount - paid);
-    const paidInstallments = Math.min(loan.installments, Math.floor(paid / installmentAmount));
+    const paidInstallments = installmentAmount > 0
+      ? Math.min(loan.installments, Math.floor(paid / installmentAmount))
+      : 0;
     const remainingInstallments = loan.installments - paidInstallments;
-    return { installmentAmount, totalAmount, paid, remaining, paidInstallments, remainingInstallments };
+    return { installmentAmount, totalAmount, paid, remaining, paidInstallments, remainingInstallments, totalLateFees };
   };
 
   const getDashboardStats = () => {
@@ -141,7 +212,7 @@ export function StoreProvider({ userId, children }) {
         loading, error,
         addClient, updateClient, deleteClient,
         addLoan, updateLoan, deleteLoan,
-        addPayment, deletePayment,
+        addPayment, deletePayment, updatePayment,
         getLoanPayments, getClientLoans, getClient, getLoan,
         calcInstallment, getLoanStats, getDashboardStats,
       }}

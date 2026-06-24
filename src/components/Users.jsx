@@ -1,3 +1,12 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/Users.jsx — Gestión de usuarios (solo admin)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Lista los usuarios del sistema y permite crear, editar credenciales o
+ *  eliminar. Solo es accesible cuando useAuth().isAdmin === true: la entrada
+ *  del sidebar se oculta para los demás.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Trash2, Shield, User, Eye, EyeOff, RefreshCw, Pencil } from "lucide-react";
 import { fetchUsers, createUserByAdmin, deleteUser, updateUser } from "../lib/db.js";

@@ -1,6 +1,16 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/SettingsModal.jsx — Modal de configuración de la app
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Edita los valores de useSettings (empresa, logo, moneda, zona horaria,
+ *  WhatsApp, parámetros de mora y plantillas de recordatorios). Los cambios
+ *  se persisten en localStorage al guardar.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useRef } from "react";
-import { X, Building2, Globe, Phone, AlertTriangle, Clock, Upload, Trash2 } from "lucide-react";
+import { X, Building2, Globe, Phone, AlertTriangle, Clock, Upload, Trash2, MessageCircle } from "lucide-react";
 import { useSettings } from "../store/useSettings.jsx";
+import { REMINDER_VARIABLES } from "./loanHelpers.jsx";
 
 const TIMEZONES = [
   { value: "America/Argentina/Buenos_Aires", label: "Argentina (ART, UTC-3)" },
@@ -64,8 +74,8 @@ export default function SettingsModal({ onClose }) {
   const validate = () => {
     const errs = {};
     if (!form.companyName?.trim()) errs.companyName = "El nombre es requerido";
-    const late = Number(form.lateInterestRate);
-    if (isNaN(late) || late < 0 || late > 100) errs.lateInterestRate = "Debe ser entre 0 y 100";
+    const fee = Number(form.lateFeePerDay);
+    if (isNaN(fee) || fee < 0) errs.lateFeePerDay = "Debe ser un monto ≥ 0";
     const grace = Number(form.graceDays);
     if (isNaN(grace) || grace < 0 || !Number.isInteger(grace)) errs.graceDays = "Debe ser un número entero ≥ 0";
     return errs;
@@ -76,7 +86,7 @@ export default function SettingsModal({ onClose }) {
     if (Object.keys(errs).length) return setErrors(errs);
     save({
       ...form,
-      lateInterestRate: Number(form.lateInterestRate),
+      lateFeePerDay: Number(form.lateFeePerDay),
       graceDays: Number(form.graceDays),
     });
     onClose();
@@ -215,19 +225,18 @@ export default function SettingsModal({ onClose }) {
             <SectionTitle icon={AlertTriangle} label="Política de mora" />
             <div className="grid grid-cols-2 gap-4">
 
-              <InputField label="Interés por mora (% mensual)" error={errors.lateInterestRate}>
+              <InputField label="Recargo por día ($)" error={errors.lateFeePerDay}>
                 <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">$</span>
                   <input
                     type="number"
                     min="0"
-                    max="100"
-                    step="0.1"
-                    value={form.lateInterestRate}
-                    onChange={set("lateInterestRate")}
-                    placeholder="Ej: 5"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 pr-9 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                    step="1"
+                    value={form.lateFeePerDay}
+                    onChange={set("lateFeePerDay")}
+                    placeholder="Ej: 1000"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">%</span>
                 </div>
               </InputField>
 
@@ -240,15 +249,59 @@ export default function SettingsModal({ onClose }) {
                     step="1"
                     value={form.graceDays}
                     onChange={set("graceDays")}
-                    placeholder="Ej: 3"
+                    placeholder="Ej: 5"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
                   />
                 </div>
               </InputField>
             </div>
             <p className="text-xs text-slate-600 mt-2">
-              Si el pago llega después de los días de gracia, se aplica el interés por mora indicado.
+              Pasados los días de gracia, se suma <strong>{`$${form.lateFeePerDay || 0}`}</strong> por cada día adicional de atraso al monto de la cuota.
             </p>
+          </div>
+
+          {/* ── Mensajes de recordatorio ────────────── */}
+          <div>
+            <SectionTitle icon={MessageCircle} label="Mensajes de recordatorio" />
+            <div className="space-y-4">
+              <InputField label="Mensaje de WhatsApp">
+                <textarea
+                  rows={4}
+                  value={form.reminderWhatsapp}
+                  onChange={set("reminderWhatsapp")}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-y"
+                />
+              </InputField>
+
+              <InputField label="Asunto del email">
+                <input
+                  value={form.reminderEmailSubject}
+                  onChange={set("reminderEmailSubject")}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </InputField>
+
+              <InputField label="Cuerpo del email">
+                <textarea
+                  rows={6}
+                  value={form.reminderEmailBody}
+                  onChange={set("reminderEmailBody")}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-y font-mono"
+                />
+              </InputField>
+
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Variables disponibles</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+                  {REMINDER_VARIABLES.map((v) => (
+                    <div key={v.key} className="flex items-baseline gap-2 text-xs">
+                      <code className="text-blue-300 font-mono">{v.key}</code>
+                      <span className="text-slate-500 truncate">{v.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

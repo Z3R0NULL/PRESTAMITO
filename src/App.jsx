@@ -1,3 +1,19 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  App.jsx — Componente raíz y enrutador interno
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Estructura general:
+ *    <App>
+ *      └─ <SettingsProvider>       → preferencias (moneda, empresa, recordatorios)
+ *          └─ <AuthProvider>       → sesión de usuario (login / logout)
+ *              └─ <AuthGate>       → muestra LoginPage si no hay sesión
+ *                  └─ <StoreProvider>   → datos del usuario (clientes, préstamos, pagos)
+ *                      └─ <AppContent>  → navegación entre páginas via estado local
+ *
+ *  La navegación NO usa React Router: se maneja con un `page` en useState.
+ *  Esto mantiene la app simple y sin URLs profundas.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState } from "react";
 import { AuthProvider, useAuth } from "./store/useAuth.jsx";
 import { StoreProvider, useStore } from "./store/useStore.jsx";
@@ -6,24 +22,40 @@ import Layout from "./components/Layout";
 import Dashboard from "./components/Dashboard";
 import Clients from "./components/Clients";
 import Loans from "./components/Loans";
-import Payments from "./components/Payments";
 import Users from "./components/Users";
 import LoginPage from "./components/LoginPage.jsx";
 import NewClientPage from "./components/NewClientPage.jsx";
 import NewLoanPage from "./components/NewLoanPage.jsx";
-import NewPaymentPage from "./components/NewPaymentPage.jsx";
 import ClientLoanHistory from "./components/ClientLoanHistory.jsx";
+import LoanDetailPage from "./components/LoanDetailPage.jsx";
 
 // ── Inner app (requires auth + store) ────────────────────────────────────────
 function AppContent() {
   const [page, setPage] = useState("dashboard");
   const [historyClientId, setHistoryClientId] = useState(null);
+  const [detailLoanId, setDetailLoanId] = useState(null);
+  const [editingClient, setEditingClient] = useState(null);
   const { loading, error } = useStore();
   const { isAdmin } = useAuth();
 
   const goToHistory = (clientId) => {
     setHistoryClientId(clientId);
     setPage("client-history");
+  };
+
+  const goToLoanDetail = (loanId) => {
+    setDetailLoanId(loanId);
+    setPage("loan-detail");
+  };
+
+  const goToEditClient = (client) => {
+    setEditingClient(client);
+    setPage("edit-client");
+  };
+
+  const navigate = (p) => {
+    if (p !== "edit-client") setEditingClient(null);
+    setPage(p);
   };
 
   if (loading) {
@@ -49,19 +81,19 @@ function AppContent() {
   }
 
   const pages = {
-    dashboard: <Dashboard setPage={setPage} />,
-    clients: <Clients setPage={setPage} onViewHistory={goToHistory} />,
-    loans: <Loans setPage={setPage} />,
-    payments: <Payments setPage={setPage} />,
-    "new-client": <NewClientPage setPage={setPage} />,
-    "new-loan": <NewLoanPage setPage={setPage} />,
-    "new-payment": <NewPaymentPage setPage={setPage} />,
-    "client-history": <ClientLoanHistory clientId={historyClientId} setPage={setPage} />,
+    dashboard: <Dashboard setPage={navigate} />,
+    clients: <Clients setPage={navigate} onViewHistory={goToHistory} onEditClient={goToEditClient} />,
+    loans: <Loans setPage={navigate} onViewLoan={goToLoanDetail} />,
+    "new-client": <NewClientPage setPage={navigate} />,
+    "edit-client": <NewClientPage setPage={navigate} initial={editingClient} onSaved={() => { setEditingClient(null); navigate("clients"); }} />,
+    "new-loan": <NewLoanPage setPage={navigate} />,
+    "client-history": <ClientLoanHistory clientId={historyClientId} setPage={navigate} />,
+    "loan-detail": <LoanDetailPage loanId={detailLoanId} setPage={navigate} />,
     ...(isAdmin && { users: <Users /> }),
   };
 
   return (
-    <Layout page={page} setPage={setPage}>
+    <Layout page={page} setPage={navigate}>
       {pages[page] ?? pages.dashboard}
     </Layout>
   );

@@ -1,3 +1,12 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  components/CurrencyInput.jsx — Input numérico con formateo de moneda en vivo
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Mientras el usuario tipea, se reformatea para mostrar separador de miles
+ *  según el locale (punto en ARS, coma en USD). Hacia afuera siempre entrega
+ *  un Number plano vía onChange(numeric, display).
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useEffect } from "react";
 import { processCurrencyInput, formatInputDisplay } from "../lib/currency.js";
 import { useSettings } from "../store/useSettings.jsx";

@@ -1,10 +1,32 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  lib/db.js — Capa de acceso a la base de datos (Turso / libSQL)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Toda la persistencia pasa por este archivo. El resto de la app NUNCA debe
+ *  hacer SQL: solo llama a las funciones exportadas (`fetch*`, `insert*`,
+ *  `patch*`, `remove*`).
+ *
+ *  Esquema:
+ *    • users     — credenciales y rol (admin / user). El admin se siembra al
+ *                  iniciar si no existe.
+ *    • clients   — clientes pertenecientes a un usuario (userId).
+ *    • loans     — préstamos asociados a un cliente.
+ *    • payments  — pagos asociados a un préstamo. `isLateFee` marca recargos
+ *                  por mora (NO cuentan para cerrar el préstamo).
+ *
+ *  Migraciones: se aplican con `ALTER TABLE ... ADD COLUMN` envueltos en
+ *  try/catch — si la columna ya existe, se ignora el error.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { createClient } from "@libsql/client";
 
+// Cliente Turso compartido en toda la app.
 export const db = createClient({
   url: import.meta.env.VITE_TURSO_DATABASE_URL,
   authToken: import.meta.env.VITE_TURSO_AUTH_TOKEN,
 });
 
+/** Hashea una contraseña con SHA-256 y devuelve su representación hex. */
 async function hashPassword(password) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -14,6 +36,10 @@ async function hashPassword(password) {
     .join("");
 }
 
+/**
+ * Crea las tablas si no existen y aplica las migraciones de columnas nuevas.
+ * Se llama una sola vez al iniciar la app (desde AuthProvider).
+ */
 export async function initSchema() {
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
@@ -75,6 +101,21 @@ export async function initSchema() {
   try {
     await db.execute("ALTER TABLE clients ADD COLUMN dni TEXT NOT NULL DEFAULT ''");
   } catch (_) { /* already exists */ }
+
+  // Migrate: add attachment columns to loans if missing
+  try { await db.execute("ALTER TABLE loans ADD COLUMN attachment TEXT"); } catch (_) {}
+  try { await db.execute("ALTER TABLE loans ADD COLUMN attachmentName TEXT"); } catch (_) {}
+  try { await db.execute("ALTER TABLE loans ADD COLUMN attachmentType TEXT"); } catch (_) {}
+
+  // Migrate: add 'paymentMethod' column to loans if missing ('cash' | 'transfer')
+  try { await db.execute("ALTER TABLE loans ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT 'cash'"); } catch (_) {}
+
+  // Migrate: add payment attachment + method columns if missing
+  try { await db.execute("ALTER TABLE payments ADD COLUMN attachment TEXT"); } catch (_) {}
+  try { await db.execute("ALTER TABLE payments ADD COLUMN attachmentName TEXT"); } catch (_) {}
+  try { await db.execute("ALTER TABLE payments ADD COLUMN attachmentType TEXT"); } catch (_) {}
+  try { await db.execute("ALTER TABLE payments ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT 'cash'"); } catch (_) {}
+  try { await db.execute("ALTER TABLE payments ADD COLUMN isLateFee INTEGER NOT NULL DEFAULT 0"); } catch (_) {}
 
   // Seed admin if not exists
   const existing = await db.execute({
@@ -149,13 +190,13 @@ export async function fetchLoans(userId) {
 export async function insertLoan(loan) {
   const id = generateId();
   await db.execute({
-    sql: "INSERT INTO loans (id, clientId, amount, interestRate, interestType, installments, startDate, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [id, loan.clientId, loan.amount, loan.interestRate, loan.interestType ?? "monthly", loan.installments, loan.startDate, "active", loan.notes ?? ""],
+    sql: "INSERT INTO loans (id, clientId, amount, interestRate, interestType, installments, startDate, status, notes, attachment, attachmentName, attachmentType, paymentMethod) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [id, loan.clientId, loan.amount, loan.interestRate, loan.interestType ?? "monthly", loan.installments, loan.startDate, "active", loan.notes ?? "", loan.attachment ?? null, loan.attachmentName ?? null, loan.attachmentType ?? null, loan.paymentMethod ?? "cash"],
   });
-  return { ...loan, id, status: "active", interestType: loan.interestType ?? "monthly" };
+  return { ...loan, id, status: "active", interestType: loan.interestType ?? "monthly", attachment: loan.attachment ?? null, attachmentName: loan.attachmentName ?? null, attachmentType: loan.attachmentType ?? null, paymentMethod: loan.paymentMethod ?? "cash" };
 }
 
-const ALLOWED_LOAN_FIELDS = new Set(["clientId", "amount", "interestRate", "interestType", "installments", "startDate", "status", "notes"]);
+const ALLOWED_LOAN_FIELDS = new Set(["clientId", "amount", "interestRate", "interestType", "installments", "startDate", "status", "notes", "attachment", "attachmentName", "attachmentType", "paymentMethod"]);
 
 export async function patchLoan(id, updates) {
   const safeKeys = Object.keys(updates).filter((k) => ALLOWED_LOAN_FIELDS.has(k));
@@ -177,20 +218,53 @@ export async function fetchPayments(userId) {
     sql: "SELECT payments.* FROM payments INNER JOIN loans ON payments.loanId = loans.id INNER JOIN clients ON loans.clientId = clients.id WHERE clients.userId = ? ORDER BY payments.date DESC",
     args: [userId],
   });
-  return res.rows.map(rowToObj);
+  return res.rows.map((r) => {
+    const o = rowToObj(r);
+    o.isLateFee = Boolean(o.isLateFee);
+    return o;
+  });
 }
 
 export async function insertPayment(payment) {
   const id = generateId();
   await db.execute({
-    sql: "INSERT INTO payments (id, loanId, amount, date, installmentNumber, note) VALUES (?, ?, ?, ?, ?, ?)",
-    args: [id, payment.loanId, payment.amount, payment.date, payment.installmentNumber, payment.note ?? ""],
+    sql: "INSERT INTO payments (id, loanId, amount, date, installmentNumber, note, paymentMethod, attachment, attachmentName, attachmentType, isLateFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [
+      id, payment.loanId, payment.amount, payment.date, payment.installmentNumber, payment.note ?? "",
+      payment.paymentMethod ?? "cash",
+      payment.attachment ?? null, payment.attachmentName ?? null, payment.attachmentType ?? null,
+      payment.isLateFee ? 1 : 0,
+    ],
   });
-  return { ...payment, id };
+  return {
+    ...payment, id,
+    paymentMethod: payment.paymentMethod ?? "cash",
+    attachment: payment.attachment ?? null,
+    attachmentName: payment.attachmentName ?? null,
+    attachmentType: payment.attachmentType ?? null,
+    isLateFee: Boolean(payment.isLateFee),
+  };
 }
 
 export async function removePayment(id) {
   await db.execute({ sql: "DELETE FROM payments WHERE id = ?", args: [id] });
+}
+
+const ALLOWED_PAYMENT_FIELDS = new Set([
+  "amount", "date", "installmentNumber", "note", "paymentMethod",
+  "attachment", "attachmentName", "attachmentType", "isLateFee",
+]);
+
+export async function patchPayment(id, updates) {
+  const safeKeys = Object.keys(updates).filter((k) => ALLOWED_PAYMENT_FIELDS.has(k));
+  if (safeKeys.length === 0) return;
+  const fields = safeKeys.map((k) => `${k} = ?`).join(", ");
+  const values = [...safeKeys.map((k) => {
+    const v = updates[k];
+    if (k === "isLateFee") return v ? 1 : 0;
+    return v;
+  }), id];
+  await db.execute({ sql: `UPDATE payments SET ${fields} WHERE id = ?`, args: values });
 }
 
 // ── users / auth ──────────────────────────────────────────────────────────────
